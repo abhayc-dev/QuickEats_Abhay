@@ -2,7 +2,7 @@
 
 A comprehensive full-stack food delivery application built with React, Node.js, and MongoDB. QuickEats connects customers, restaurant owners, and delivery personnel in a seamless food delivery ecosystem.
 
-![QuickEats Logo](https://img.shields.io/badge/QuickEats-Food%20Delivery-orange?style=for-the-badge&logo=delivery)
+![QuickEats Logo]([https://img.shields.io/badge/QuickEats-Food%20Delivery-orange?style=for-the-badge&logo=delivery](https://quickeats-abhay.onrender.com/))
 
 ## 🌟 Features
 
