@@ -65,7 +65,6 @@ function Nav() {
 
   return (
     <div className="w-full h-[60px] flex items-center justify-between px-4 md:px-10 fixed top-0 z-50 shadow-md bg-gradient-to-t from-gray-100 to-gray-100">
-
       {/* //! Logo */}
       <h1
         className="text-2xl md:text-3xl font-extrabold text-[#ff4d2d] tracking-wide cursor-pointer"
@@ -74,7 +73,7 @@ function Nav() {
         Quick<span className="text-gray-600">Eats</span>
       </h1>
 
-       {/* //! Search (mobile toggle + desktop inline)  not user Data */}
+      {/* //! Search (mobile toggle + desktop inline)  not user Data */}
       {!userData && (
         <>
           {/* //! Mobile Search */}
@@ -112,7 +111,6 @@ function Nav() {
           </div>
         </>
       )}
-
 
       {/* //! Search (mobile toggle + desktop inline) */}
       {userData?.role === "user" && (
@@ -155,8 +153,7 @@ function Nav() {
 
       {/* //! Right Section */}
       <div className="flex items-center gap-4 md:gap-6">
-
-         {/* //! Toggle Search (Mobile Only) not userData */}
+        {/* //! Toggle Search (Mobile Only) not userData */}
         {!userData &&
           (search ? (
             <RxCross2
@@ -231,18 +228,20 @@ function Nav() {
         )}
 
         {/* //! User Cart */}
-        {/* //! Cart visible for all (guests can add items) */}
-        <div
-          className="relative cursor-pointer"
-          onClick={() => navigate("/cart")}
-        >
-          <BsCart3 size={24} className="text-[#ff4d2d]" />
-          {cartItems.length > 0 && (
-            <span className="absolute -right-2 -top-2 text-xs font-bold text-white bg-[#ff4d2d] rounded-full px-1.5 py-0.5 shadow">
-              {cartItems.length}
-            </span>
-          )}
-        </div>
+        {/* //! Cart visible for guests and users (not admins) */}
+        {(!userData || userData?.role === "user") && (
+          <div
+            className="relative cursor-pointer"
+            onClick={() => navigate("/cart")}
+          >
+            <BsCart3 size={24} className="text-[#ff4d2d]" />
+            {cartItems.length > 0 && (
+              <span className="absolute -right-2 -top-2 text-xs font-bold text-white bg-[#ff4d2d] rounded-full px-1.5 py-0.5 shadow">
+                {cartItems.length}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* //! Profile */}
         {userData ? (

@@ -34,23 +34,23 @@ const OwnerOrderCard = ({ data }) => {
     <div className="bg-white rounded-lg shadow p-4 space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-gray-800">
-          {data.user.fullName}
+          {data?.user?.fullName}
         </h2>
         <p className="flex items-center gap-2 text-sm text-gray-500">
           <IoMailUnreadOutline className="text-[#ff4d2d]" />
-          {data.user.email}
+          {data?.user?.email}
         </p>
         <p className="flex items-center gap-2 text-sm text-gray-600 mt-1">
           <FcIphone />
-          <span>+91 {data.user.mobile}</span>
+          <span>+91 {data?.user?.mobile}</span>
         </p>
         {data.paymentMethod == "online" ? (
           <p className="gap-2 text-sm text-gray-500">
-            Payment: {data.payment ? "true" : "false"}
+            Payment: {data?.payment ? "true" : "false"}
           </p>
         ) : (
           <p className="gap-2 text-sm text-gray-500">
-            Payment Method: {data.paymentMethod}
+            Payment Method: {data?.paymentMethod}
           </p>
         )}
       </div>
@@ -61,8 +61,8 @@ const OwnerOrderCard = ({ data }) => {
           {data?.deliveryAddress?.text}
         </p>
         <p className="text-xs text-gray-500 ml-5">
-          Lat: {data?.deliveryAddress.latitude}, Lon:{" "}
-          {data?.deliveryAddress.longitude}
+          Lat: {data?.deliveryAddress?.latitude}, Lon:{" "}
+          {data?.deliveryAddress?.longitude}
         </p>
       </div>
 
@@ -73,13 +73,13 @@ const OwnerOrderCard = ({ data }) => {
             className="flex-shrink-0 w-40 border rounded-lg p-2 bg-gray-50"
           >
             <img
-              src={item.item.image}
+              src={item?.item?.image}
               alt=""
               className="w-full h-24 object-cover rounded"
             />
-            <p className="text-sm font-semibold mt-1">{item.name}</p>
+            <p className="text-sm font-semibold mt-1">{item?.name}</p>
             <p className="text-xs text-gray-500">
-              Qty: {item.quantity} x ₹{item.price}
+              Qty: {item?.quantity} x ₹{item?.price}
             </p>
           </div>
         ))}
@@ -89,7 +89,7 @@ const OwnerOrderCard = ({ data }) => {
         <span className="text-xm">
           Status:{" "}
           <span className="font-semibold capitalize text-[#ff4d2d]">
-            {data.shopOrders.status}
+            {data?.shopOrders?.status}
           </span>
         </span>
 
@@ -121,15 +121,15 @@ const OwnerOrderCard = ({ data }) => {
           {availableBoys?.length > 0 ? (
             availableBoys.map((b, index) => (
               <div className="text-gray-800 flex gap-6 mt-2" key={index}>
-                <p>Name: {b.fullName}</p> Mob: {b.mobile}
+                <p>Name: {b?.fullName}</p> Mob: {b?.mobile}
               </div>
             ))
           ) : data.shopOrders.assignedDeliveryBoy ? (
             <div className="">
               <span className="font-semibold">Name: </span>
-              <span>{data.shopOrders.assignedDeliveryBoy.fullName}</span> |{" "}
+              <span>{data?.shopOrders?.assignedDeliveryBoy?.fullName}</span> |{" "}
               <span className="font-semibold">Mobile: </span>
-              <span>{data.shopOrders.assignedDeliveryBoy.mobile}</span>
+              <span>{data?.shopOrders?.assignedDeliveryBoy?.mobile}</span>
             </div>
           ) : (
             <div>Waiting for delivery boy to accept</div>
@@ -138,7 +138,7 @@ const OwnerOrderCard = ({ data }) => {
       )}
 
       <div className="font-bold text-right text-sm text-gray-700">
-        Total: ₹{data.shopOrders.subtotal}
+        Total: ₹{data?.shopOrders?.subtotal}
       </div>
     </div>
   );
