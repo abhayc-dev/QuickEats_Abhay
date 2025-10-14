@@ -21,8 +21,7 @@ const server = http.createServer(app);
 // ✅ Setup Socket.IO 
 const io = new Server(server, {
   cors: {
-    // origin: "http://localhost:5173",
-    origin: "https://quickeats-abhay.onrender.com/",
+    origin: ["http://localhost:5173", "https://quickeats-abhay.onrender.com"],
     credentials: true,
     methods: ["POST", "GET", "PATCH"],
   },
@@ -34,8 +33,7 @@ app.set("io", io);
 // ✅ Middlewares
 app.use(
   cors({
-    // origin: "http://localhost:5173",
-    origin: "https://quickeats-abhay.onrender.com/",
+    origin: ["http://localhost:5173", "https://quickeats-abhay.onrender.com"],
     credentials: true,
   })
 );
