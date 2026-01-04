@@ -13,6 +13,7 @@ import http from "http";
 import { Server } from "socket.io";
 import { socketHandler } from "./socket.js";
 import contactRouter from "./routers/contact.js";
+import reviewRouter from "./routers/review.route.js";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -21,9 +22,9 @@ const server = http.createServer(app);
 // ✅ Setup Socket.IO 
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "https://quickeats-abhay.onrender.com"],
+    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "https://quickeats-abhay.onrender.com"],
     credentials: true,
-    methods: ["POST", "GET", "PATCH"],
+    methods: ["POST", "GET", "PATCH", "PUT", "DELETE"],
   },
 });
 
@@ -33,13 +34,14 @@ app.set("io", io);
 // ✅ Middlewares
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://quickeats-abhay.onrender.com"],
+    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "https://quickeats-abhay.onrender.com"],
     credentials: true,
   })
 );
 
 app.use(express.json());
 app.use(cookieParser());
+app.use("/images", express.static("public")); // Use 'public' folder for images
 
 // ✅ Routes
 app.use("/api/auth", authRouter); 
@@ -48,6 +50,7 @@ app.use("/api/shop", shopRouter);
 app.use("/api/item", itemRouter);
 app.use("/api/order", orderRouter);
 app.use("/api/contact", contactRouter);
+app.use("/api/review", reviewRouter);
 
 // ✅ Socket.IO handler
 socketHandler(io);

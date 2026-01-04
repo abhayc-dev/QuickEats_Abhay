@@ -11,9 +11,10 @@ import { useSelector } from "react-redux";
 import FoodCard from "./FoodCard";
 import { useNavigate } from "react-router-dom";
 import Footer from "../src/pages/Footer";
+import Skeleton from "./Skeleton";
 
 const UserDashboard = () => {
-  const { currentCity, shopsInMyCity, itemsInMyCity, searchItems } =
+  const { currentCity, shopsInMyCity, itemsInMyCity, searchItems, loadingShops, loadingItems } =
     useSelector((state) => state.user);
 
   const cateScrollRef = useRef();
@@ -193,14 +194,26 @@ const UserDashboard = () => {
             className="w-full flex overflow-x-auto gap-4 pb-2"
             ref={shopScrollRef}
           >
-            {shopsInMyCity?.map((shop, index) => (
-              <CategoryCard
-                name={shop.name}
-                image={shop.image}
-                key={shop._id || index}
-                onClick={() => navigate(`/shop/${shop._id}`)}
-              />
-            ))}
+            {loadingShops ? (
+              // Loading Skeletons
+              Array(5).fill(0).map((_, i) => (
+                <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2">
+                  <Skeleton width="150px" height="150px" shape="rect" className="rounded-2xl" />
+                  <Skeleton width="100px" height="20px" />
+                </div>
+              ))
+            ) : shopsInMyCity && shopsInMyCity.length > 0 ? (
+              shopsInMyCity.map((shop, index) => (
+                <CategoryCard
+                  name={shop.name}
+                  image={shop.image}
+                  key={shop._id || index}
+                  onClick={() => navigate(`/shop/${shop._id}`)}
+                />
+              ))
+            ) : (
+              <p className="text-gray-500">No shops found in {currentCity}</p>
+            )}
           </div>
 
           {showRightShopButton && (
@@ -223,12 +236,29 @@ const UserDashboard = () => {
           Our top picks to satisfy your cravings 🔥
         </p>
         <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3  gap-5">
-          {filteredItems.map((items, index) => (
-            <FoodCard data={items} key={index} />
-          ))}
+          {loadingItems ? (
+            // Loading Skeletons for Items
+            Array(6).fill(0).map((_, i) => (
+              <div key={i} className="flex flex-col gap-3 p-4 border rounded-xl shadow-sm bg-white">
+                <Skeleton width="100%" height="180px" className="rounded-lg" />
+                <Skeleton width="60%" height="20px" />
+                <Skeleton width="40%" height="20px" />
+                <div className="flex justify-between mt-2">
+                  <Skeleton width="30%" height="30px" />
+                  <Skeleton width="30%" height="30px" />
+                </div>
+              </div>
+            ))
+          ) : filteredItems && filteredItems.length > 0 ? (
+            filteredItems.map((items, index) => (
+              <FoodCard data={items} key={index} />
+            ))
+          ) : (
+            <p className="text-gray-500">No items found</p>
+          )}
         </div>
       </div>
-      <Footer/>
+      <Footer />
     </div>
   );
 };

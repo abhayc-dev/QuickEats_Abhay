@@ -88,7 +88,7 @@ const CheckOut = () => {
             latitude: location.lat,
             longitude: location.lon,
           },
-          totalAmount:AmountWithDeliveryFee,
+          totalAmount: AmountWithDeliveryFee,
           cartItems,
         },
         { withCredentials: true }
@@ -118,9 +118,9 @@ const CheckOut = () => {
       name: "Vicky Sweet's Shop",
       description: "Food Delivery Website",
       order_id: razorOrder.id,
-       theme: {
-      color: "#ff4d2d", // Brand theme color
-    },
+      theme: {
+        color: "#ff4d2d", // Brand theme color
+      },
       handler: async function (response) {
         try {
           const result = await axios.post(
@@ -209,23 +209,35 @@ const CheckOut = () => {
             </button>
           </div>
           <div className="rounded-xl border overflow-hidden">
-            <div className="h-64 w-full flex items-center justify-center">
-              <MapContainer
-                className={"w-full h-full"}
-                center={[location?.lat, location?.lon]}
-                zoom={16}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <RecenterMap location={location} />
-                <Marker
-                  position={[location?.lat, location?.lon]}
-                  draggable
-                  eventHandlers={{ dragend: onDragEnd }}
-                />
-              </MapContainer>
+            <div className="h-64 w-full flex items-center justify-center bg-gray-50">
+              {location?.lat && location?.lon ? (
+                <MapContainer
+                  className={"w-full h-full"}
+                  center={[location.lat, location.lon]}
+                  zoom={16}
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <RecenterMap location={location} />
+                  <Marker
+                    position={[location.lat, location.lon]}
+                    draggable
+                    eventHandlers={{ dragend: onDragEnd }}
+                  />
+                </MapContainer>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-3">
+                  <p className="text-gray-500 font-medium">Location not detected</p>
+                  <button
+                    onClick={getCurrentLocation}
+                    className="text-white bg-[#ff4d2d] px-4 py-2 rounded-lg shadow hover:bg-[#e64526] transition"
+                  >
+                    Detect My Location
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -237,11 +249,10 @@ const CheckOut = () => {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div
-              className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${
-                paymentMethod === "cod"
+              className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${paymentMethod === "cod"
                   ? "border-[#f24c4cb9] shadow bg-[#FAF9F6]"
                   : "border-gray-200 bg-gray-50 hover:border-gray-300"
-              }`}
+                }`}
               onClick={() => setPaymentMethod("cod")}
             >
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
@@ -255,11 +266,10 @@ const CheckOut = () => {
               </div>
             </div>
             <div
-              className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${
-                paymentMethod === "online"
+              className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${paymentMethod === "online"
                   ? "border-[#f24c4cb9] shadow bg-[#FAF9F6]"
                   : "border-gray-200 bg-gray-50 hover:border-gray-300"
-              }`}
+                }`}
               onClick={() => setPaymentMethod("online")}
             >
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">

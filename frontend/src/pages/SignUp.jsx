@@ -12,6 +12,7 @@ import { auth } from "../../firebase";
 import { ClipLoader } from "react-spinners";
 import { useDispatch } from "react-redux";
 import { setUserData } from "../redux/userSlice";
+import SEO from "../components/SEO";
 
 const SignUp = () => {
   const primaryColor = "#ff4d2d";
@@ -83,6 +84,7 @@ const SignUp = () => {
 
   return (
     <div className="m-full min-h-screen w-full flex items-center justify-center p-4 bg-[#FAF9F6]">
+      <SEO title="Quick Eats | Sign Up" description="Create an account on Quick Eats." />
       <div
         className="bg-white rounded-xl shadow-lg w-full max-w-md p-8 border-[1px]"
         style={{

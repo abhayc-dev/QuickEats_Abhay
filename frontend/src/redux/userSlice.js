@@ -9,11 +9,13 @@ function getInitialState() {
     const parsed = stored ? JSON.parse(stored) : null;
     return {
       userData: null,
-      currentCity: null,
-      currentState: null,
-      currentAddress: null,
-      shopsInMyCity: [],
-      itemsInMyCity: [],
+      currentCity: parsed?.city || null,
+      currentState: parsed?.state || null,
+      currentAddress: parsed?.address || null,
+      shopsInMyCity: parsed?.shops || [],
+      itemsInMyCity: parsed?.itemsData || [],
+      loadingShops: !parsed?.shops?.length,
+      loadingItems: !parsed?.itemsData?.length,
       cartItems: parsed?.items || [],
       totalAmount: parsed?.totalAmount || 0,
       myOrders: [],
@@ -29,6 +31,8 @@ function getInitialState() {
       currentAddress: null,
       shopsInMyCity: [],
       itemsInMyCity: [],
+      loadingShops: true,
+      loadingItems: true,
       cartItems: [],
       totalAmount: 0,
       myOrders: [],
@@ -47,21 +51,54 @@ const userSlice = createSlice({
     },
     setCurrentCity: (state, action) => {
       state.currentCity = action.payload;
+      try {
+        const stored = localStorage.getItem("guestCart");
+        const parsed = stored ? JSON.parse(stored) : {};
+        parsed.city = action.payload;
+        localStorage.setItem("guestCart", JSON.stringify(parsed));
+      } catch (e) {}
     },
     setCurrentState: (state, action) => {
       state.currentState = action.payload;
+      try {
+        const stored = localStorage.getItem("guestCart");
+        const parsed = stored ? JSON.parse(stored) : {};
+        parsed.state = action.payload;
+        localStorage.setItem("guestCart", JSON.stringify(parsed));
+      } catch (e) {}
     },
     setCurrentAddress: (state, action) => {
       state.currentAddress = action.payload;
+      try {
+        const stored = localStorage.getItem("guestCart");
+        const parsed = stored ? JSON.parse(stored) : {};
+        parsed.address = action.payload;
+        localStorage.setItem("guestCart", JSON.stringify(parsed));
+      } catch (e) {}
     },
     setShopsInMyCity: (state, action) => {
       state.shopsInMyCity = action.payload;
+      state.loadingShops = false;
+      try {
+        const stored = localStorage.getItem("guestCart");
+        const parsed = stored ? JSON.parse(stored) : {};
+        parsed.shops = action.payload;
+        localStorage.setItem("guestCart", JSON.stringify(parsed));
+      } catch (e) {}
     },
     setItemsInMyCity: (state, action) => {
       state.itemsInMyCity = action.payload;
+      state.loadingItems = false;
+      try {
+        const stored = localStorage.getItem("guestCart");
+        const parsed = stored ? JSON.parse(stored) : {};
+        parsed.itemsData = action.payload;
+        localStorage.setItem("guestCart", JSON.stringify(parsed));
+      } catch (e) {}
     },
+    
     addToCart: (state, action) => {
-      const cartItem = action.payload;
+       const cartItem = action.payload;
       const existingItem = state.cartItems.find((i) => i.id == cartItem.id);
       if (existingItem) {
         existingItem.quantity += cartItem.quantity;

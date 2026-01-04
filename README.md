@@ -79,6 +79,7 @@ QuickEats/
 - Node.js (v16 or higher)
 - MongoDB
 - Git
+- Docker (optional - for containerized deployment)
 
 ### 1. Clone the Repository
 ```bash
@@ -159,6 +160,39 @@ npm run dev
 - Analytics and reporting
 - Image upload for food items
 
+## 🐳 Docker Setup
+
+### Prerequisites
+- Docker
+- Docker Compose
+
+### Development Setup
+To run the application in development mode with hot reloading:
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/QuickEats.git
+cd QuickEats
+
+# Start the development services
+docker-compose -f docker-compose.dev.yml up
+```
+
+The application will be available at:
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:5000
+- MongoDB: mongodb://localhost:27017
+
+### Production Setup
+To run the application in production mode:
+
+```bash
+# Build and start the production services
+docker-compose up
+```
+
+### Environment Variables
+Create `.env` files in both `frontend` and `backend` directories with your configuration.
 ## 🚀 Deployment
 
 ### Backend Deployment

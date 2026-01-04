@@ -12,6 +12,7 @@ import { auth } from "../../firebase";
 import { ClipLoader } from "react-spinners";
 import { setUserData } from "../redux/userSlice";
 import { useDispatch } from "react-redux";
+import SEO from "../components/SEO";
 
 const SignIn = () => {
   const primaryColor = "#ff4d2d";
@@ -82,6 +83,7 @@ const SignIn = () => {
 
   return (
     <div className="m-full min-h-screen w-full flex items-center justify-center p-4 bg-[#FAF9F6]">
+      <SEO title="Quick Eats | Sign In" description="Sign in to Quick Eats to order food." />
       <div
         className="bg-white rounded-xl shadow-lg w-full max-w-md p-8 border-[1px]"
         style={{
@@ -107,11 +109,10 @@ const SignIn = () => {
               <button
                 key={r.key}
                 type="button"
-                className={`border rounded-lg py-2 ${
-                  role === r.key
-                    ? "bg-[#ff4d2d] text-white border-[#ff4d2d]"
-                    : "bg-white"
-                }`}
+                className={`border rounded-lg py-2 ${role === r.key
+                  ? "bg-[#ff4d2d] text-white border-[#ff4d2d]"
+                  : "bg-white"
+                  }`}
                 onClick={() => setRole(r.key)}
               >
                 {r.label}

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://quickeats-abhay.onrender.com/sitemap.xml

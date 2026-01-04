@@ -1,7 +1,7 @@
 //! THis is a nav bar
 
 import React, { useEffect, useState } from "react";
-import { FaLocationDot } from "react-icons/fa6";
+import { FaLocationDot, FaMicrophone } from "react-icons/fa6";
 import { IoMdSearch } from "react-icons/io";
 import { BsCart3 } from "react-icons/bs";
 import { useDispatch, useSelector } from "react-redux";
@@ -21,11 +21,44 @@ function Nav() {
 
   const [showInfo, setShowInfo] = useState(false);
   const [search, setSearch] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const [query, setQuery] = useState([]);
+
+  const startListening = () => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setQuery(transcript);
+        setIsListening(false);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error", event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } else {
+      alert("Browser does not support speech recognition.");
+    }
+  };
 
   const handleLogOut = async () => {
     try {
@@ -91,6 +124,16 @@ function Nav() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
+              <button
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                onClick={() => startListening()}
+              >
+                {isListening ? (
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                ) : (
+                  <FaMicrophone size={16} className="text-gray-400" />
+                )}
+              </button>
             </div>
           )}
 
@@ -108,6 +151,16 @@ function Nav() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
+            <button
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              onClick={() => startListening()}
+            >
+              {isListening ? (
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              ) : (
+                <FaMicrophone size={16} className="text-gray-400" />
+              )}
+            </button>
           </div>
         </>
       )}
@@ -130,6 +183,16 @@ function Nav() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
+              <button
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                onClick={() => startListening()}
+              >
+                {isListening ? (
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                ) : (
+                  <FaMicrophone size={16} className="text-gray-400" />
+                )}
+              </button>
             </div>
           )}
 
@@ -147,6 +210,16 @@ function Nav() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
+            <button
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              onClick={() => startListening()}
+            >
+              {isListening ? (
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              ) : (
+                <FaMicrophone size={16} className="text-gray-400" />
+              )}
+            </button>
           </div>
         </>
       )}
