@@ -13,6 +13,8 @@ import { useNavigate } from "react-router-dom";
 import Footer from "../src/pages/Footer";
 import Skeleton from "./Skeleton";
 
+import HeroSection from "./HeroSection";
+
 const UserDashboard = () => {
   const { currentCity, shopsInMyCity, itemsInMyCity, searchItems, loadingShops, loadingItems } =
     useSelector((state) => state.user);
@@ -107,26 +109,46 @@ const UserDashboard = () => {
   }, [shopsInMyCity]);
 
   return (
-    <div className="w-full min-h-screen flex flex-col items-center">
+    <div className="w-full min-h-screen flex flex-col items-center bg-gradient-to-br from-orange-50 via-white to-yellow-50">
       <Nav />
+      {/* Hero Section */}
+      <div className="w-full max-w-6xl px-2">
+        <HeroSection />
+      </div>
 
       {/* //! Search Results Section */}
+      {/* //! Search Results Section */}
       {searchItems && searchItems.length > 0 && (
-        <div className="w-full max-w-6xl flex flex-col items-start p-6 shadow-lg rounded-2xl mb-4 border border-gray-300 gap-5 bg-red-50 ">
+        <div className="w-full max-w-6xl flex flex-col items-start p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow duration-300 rounded-3xl mb-8 border border-gray-100 gap-6 bg-white relative overflow-hidden">
+          {/* Decorative accent */}
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-red-500" />
+
           {/* //! Title */}
-          <div className="flex w-full justify-between items-center border-b  border-gray-200 pb-3">
-            <h1 className="text-gray-900 text-2xl sm:text-3xl font-bold flex items-center gap-2">
-              🔍 Search Results
-            </h1>
-            <p className="text-gray-500 text-sm sm:text-base">
-              {searchItems.length} item{searchItems.length > 1 ? "s" : ""} found
-            </p>
+          <div className="flex w-full justify-between items-end border-b border-gray-100 pb-4">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-50 text-orange-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
+              <div>
+                <h1 className="text-gray-900 text-xl sm:text-2xl font-black tracking-tight">
+                  Search <span className="text-orange-600">Results</span>
+                </h1>
+                <p className="text-gray-400 text-xs font-medium mt-0.5">
+                  Top matches for your craving
+                </p>
+              </div>
+            </div>
+            <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+              {searchItems.length} Found
+            </span>
           </div>
 
           {/* //! Results Grid */}
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2  lg:grid-cols-4 gap-2">
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {searchItems.map((item) => (
-              <div key={item._id}>
+              <div key={item._id} className="transform hover:-translate-y-1 transition-transform duration-300">
                 <FoodCard data={item} />
               </div>
             ))}
@@ -135,15 +157,19 @@ const UserDashboard = () => {
       )}
 
       {/* //! categories */}
-      <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-[10px]">
-        <h1 className="text-gray-900 text-2xl sm:text-3xl font-bold">
-          🍴 Inspiration for Your First Order
-        </h1>
+      <div className="w-full max-w-6xl flex flex-col gap-6 items-start p-4">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl flex items-center justify-center w-12 h-12 bg-white rounded-full shadow-sm text-center pt-1">🍴</span>
+          <h1 className="text-gray-900 text-2xl sm:text-3xl font-black tracking-tight relative">
+            Inspiration for Your <span className="text-orange-600">First Order</span>
+            <span className="absolute -bottom-2 left-0 w-1/3 h-1 bg-gradient-to-r from-orange-400 to-transparent rounded-full"></span>
+          </h1>
+        </div>
 
         <div className="w-full relative">
           {showLeftCatButton && (
             <button
-              className="absolute left-0 top-20 m-1 -translate-y-9 md:-translate-y-1/2 z-10 bg-[#ff4d2d] text-white p-1 rounded-full shadow-lg hover:bg-[#e64528]"
+              className="absolute left-0 top-20 m-1 -translate-y-9 md:-translate-y-1/2 z-10 bg-primary text-primary-foreground p-1 rounded-full shadow-lg hover:brightness-110"
               onClick={() => scrollHandler(cateScrollRef, "left")}
             >
               <HiArrowCircleLeft />
@@ -166,7 +192,7 @@ const UserDashboard = () => {
 
           {showRightCatButton && (
             <button
-              className="absolute right-0 top-20 m-1 -translate-y-9 md:-translate-y-1/2 z-10 bg-[#ff4d2d] text-white p-1 rounded-full shadow-lg hover:bg-[#e64528]"
+              className="absolute right-0 top-20 m-1 -translate-y-9 md:-translate-y-1/2 z-10 bg-primary text-primary-foreground p-1 rounded-full shadow-lg hover:brightness-110"
               onClick={() => scrollHandler(cateScrollRef, "right")}
             >
               <HiArrowCircleRight />
@@ -176,14 +202,17 @@ const UserDashboard = () => {
       </div>
 
       {/* //! shop */}
-      <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-[10px]">
-        <h1 className="text-gray-900 text-2xl sm:text-3xl font-bold">
-          🏪 Best Shops in <span className="text-[#ff4d2d]">{currentCity}</span>
-        </h1>
+      <div id="best-shops" className="w-full max-w-6xl flex flex-col gap-6 items-start p-4 scroll-mt-24">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl flex items-center justify-center w-12 h-12 bg-white rounded-full shadow-sm text-center pt-1">🏪</span>
+          <h1 className="text-gray-900 text-2xl sm:text-3xl font-black tracking-tight">
+            Best Shops in <span className="text-orange-600 underline decoration-yellow-400 decoration-wavy decoration-2 underline-offset-4">{currentCity}</span>
+          </h1>
+        </div>
         <div className="w-full relative">
           {showLeftShopButton && (
             <button
-              className="absolute left-0 top-20 m-1 -translate-y-1/2 z-10 bg-[#ff4d2d] text-white p-1 rounded-full shadow-lg hover:bg-[#e64528]"
+              className="absolute left-0 top-20 m-1 -translate-y-1/2 z-10 bg-primary text-primary-foreground p-1 rounded-full shadow-lg hover:brightness-110"
               onClick={() => scrollHandler(shopScrollRef, "left")}
             >
               <HiArrowCircleLeft />
@@ -218,7 +247,7 @@ const UserDashboard = () => {
 
           {showRightShopButton && (
             <button
-              className="absolute right-0 top-20 m-1 -translate-y-1/2 z-10 bg-[#ff4c2d] text-white p-1 rounded-full shadow-lg hover:bg-[#e64528]"
+              className="absolute right-0 top-20 m-1 -translate-y-1/2 z-10 bg-primary text-primary-foreground p-1 rounded-full shadow-lg hover:brightness-110"
               onClick={() => scrollHandler(shopScrollRef, "right")}
             >
               <HiArrowCircleRight />
@@ -228,13 +257,18 @@ const UserDashboard = () => {
       </div>
 
       {/* //! Items Card */}
-      <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-[5px]">
-        <h1 className="text-gray-900 text-2xl sm:text-3xl font-bold">
-          🍕 Handpicked for You
-        </h1>
-        <p className="text-gray-500 text-sm mb-2">
-          Our top picks to satisfy your cravings 🔥
-        </p>
+      <div className="w-full max-w-6xl flex flex-col gap-6 items-start p-4">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl flex items-center justify-center w-12 h-12 bg-white rounded-full shadow-sm text-center pt-1">🍕</span>
+            <h1 className="text-gray-900 text-2xl sm:text-3xl font-black tracking-tight">
+              Handpicked for <span className="text-orange-600">You</span>
+            </h1>
+          </div>
+          <p className="text-gray-500 text-sm font-medium ml-16 mt-[-5px]">
+            Our top picks to satisfy your cravings 🔥
+          </p>
+        </div>
         <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3  gap-5">
           {loadingItems ? (
             // Loading Skeletons for Items

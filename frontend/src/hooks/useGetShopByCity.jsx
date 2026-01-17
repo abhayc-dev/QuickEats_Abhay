@@ -20,6 +20,7 @@ function useGetShopByCity() {
 
       } catch (error) {
         console.log(error.message);
+        dispatch(setShopsInMyCity([]));
       }
     };
     fetchShops();

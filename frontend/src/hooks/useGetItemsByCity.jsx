@@ -20,6 +20,7 @@ function useGetItemsByCity() {
 
       } catch (error) {
         console.log(error.message);
+        dispatch(setItemsInMyCity([]));
       }
     };
     fetchItems();

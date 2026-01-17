@@ -13,7 +13,7 @@ import {
   addToCart,
   deleteQuantity,
   updateQuantity,
-} from "../src/redux/userSlice"; 
+} from "../src/redux/userSlice";
 
 const FoodCard = ({ data }) => {
   const dispatch = useDispatch();
@@ -80,96 +80,87 @@ const FoodCard = ({ data }) => {
     }
   };
 
-  
+
 
   return (
-    <div className="bg-white rounded-xl overflow-hidden shadow-md group hover:scale-[1.03] transition-transform duration-200 ease-in-out">
+    <div className="bg-white rounded-2xl overflow-hidden shadow-lg group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 ease-in-out border border-gray-100">
 
       {/* //! IMAGE + OVERLAYS */}
-      <div className="relative ">
+      <div className="relative h-56 overflow-hidden">
         <img
           src={data?.image}
           alt={data?.name}
-          className="w-full h-56 object-cover"
+          className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
         />
 
         {/* //! small veg/fish icon top-left */}
-        <div className="absolute top-3 left-3 bg-white bg-opacity-90 rounded-full p-1 shadow-sm">
+        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-sm">
           {data.foodType === "veg" ? (
-            <FaLeaf className="text-green-600" />
+            <FaLeaf className="text-green-600" size={14} />
           ) : (
-            <PiFishFill className="text-red-500" />
+            <PiFishFill className="text-red-500" size={14} />
           )}
         </div>
 
-        {/* <button
-          className="absolute top-3 right-3 bg-black bg-opacity-70 text-white text-xs px-3 py-1 rounded-md opacity-95"
-          // wire this to your customise modal if you have one
-          onClick={() => {
-            
-          }}
-        >
-          Customise →
-        </button> */}
-
         {/* //! Gradient overlay with name + short desc */}
-        <div className="absolute left-0 right-0 bottom-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
-          <div className="flex items-center gap-2">
-            <h3 className="text-white text-lg font-semibold truncate">
+        <div className="absolute inset-x-0 bottom-0 pt-10 pb-4 px-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
+          <div className="flex items-center justify-between">
+            <h3 className="text-white text-xl font-bold truncate tracking-wide">
               {data.name}
             </h3>
+            {data.rating?.average > 0 && (
+              <div className="flex items-center gap-1 bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/10">
+                <FaStar className="text-yellow-400 text-xs" />
+                <span className="text-white text-xs font-bold">{Number(data.rating.average).toFixed(1)}</span>
+              </div>
+            )}
           </div>
-          <p className="text-white/80 text-sm mt-1 truncate">
-            {data.category || data.description || "Delicious food item"}
+          <p className="text-gray-200 text-sm mt-1 truncate font-medium">
+            {data.category || data.description || "Fresh & Delicious"}
           </p>
-
-          {/* //! optional rating inside gradient (small) */}
-          <div className="flex items-center gap-2 mt-2">
-            <div className="flex items-center gap-1">
-              {renderStars(data.rating?.average || 0)}
-            </div>
-            <span className="text-xs text-white/70">
-              ({data.rating?.count || 0})
-            </span>
-          </div>
         </div>
       </div>
 
-      {/* //! BOTTOM DARK BAND: price on left, add/qty area on right */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-b  from-black/30">
-        <div>
-          <div className="text-gray-600 font-bold text-lg">₹{data.price}</div>
-          <div className="text-xs text-gray/60 mt-1">
-            Regular | Best Served 
-          </div>
-        </div>
-
-        {/* //! Add button OR quantity controls (replace in-place when item in cart) */}
-        <div>
-          {quantity > 0 ? (
-            <div className="flex items-center border rounded-full overflow-hidden shadow-sm bg-red-50 border-none">
-              <button
-                className="px-3 py-3 hover:bg-red-100 transition cursor-pointer"
-                onClick={handleDecrease}
-              >
-                <FaMinus size={12} />
-              </button>
-              <span className="px-3">{quantity}</span>
-              <button
-                className="px-3 py-3 hover:bg-red-100 transition cursor-pointer"
-                onClick={handleIncrease}
-              >
-                <FaPlus size={12} />
-              </button>
+      {/* //! BOTTOM DETAILS SECTION */}
+      <div className="p-4 bg-gray-50">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-orange-600 font-bold text-xl">₹</span>
+              <span className="text-orange-600 font-bold text-xl">{data.price}</span>
             </div>
-          ) : (
-            <button
-              className="flex items-center gap-2 bg-[#ff4d2d] text-white px-3 py-2 rounded-lg hover:bg-[#e63e20] transition-colors cursor-pointer"
-              onClick={handleAdd}
-            >
-              <FaCartPlus /> Add +
-            </button>
-          )}
+            <div className="text-xs text-gray-500 font-medium mt-0.5">
+              Best Served Hot
+            </div>
+          </div>
+
+          {/* //! Add button OR quantity controls */}
+          <div>
+            {quantity > 0 ? (
+              <div className="flex items-center bg-orange-50 rounded-full border border-orange-100 shadow-inner">
+                <button
+                  className="w-8 h-8 flex items-center justify-center text-orange-600 hover:bg-orange-200 rounded-full transition"
+                  onClick={handleDecrease}
+                >
+                  <FaMinus size={10} />
+                </button>
+                <span className="w-6 text-center text-orange-700 font-bold text-sm">{quantity}</span>
+                <button
+                  className="w-8 h-8 flex items-center justify-center text-orange-600 hover:bg-orange-200 rounded-full transition"
+                  onClick={handleIncrease}
+                >
+                  <FaPlus size={10} />
+                </button>
+              </div>
+            ) : (
+              <button
+                className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-5 py-2.5 rounded-full font-bold shadow-md hover:shadow-lg hover:from-orange-600 hover:to-yellow-600 transition-all active:scale-95"
+                onClick={handleAdd}
+              >
+                Add <FaCartPlus size={16} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -20,6 +20,12 @@ const deliveryAssignmentSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    rejectedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

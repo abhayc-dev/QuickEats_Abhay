@@ -7,22 +7,18 @@ import Razorpay from "razorpay";
 import dotenv from "dotenv";
 dotenv.config();
 
-//! RazorPay instance
-var instance = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
-
 //! PlaceOrder
 export const placeOrder = async (req, res) => {
   try {
     const { cartItems, paymentMethod, deliveryAddress, totalAmount } = req.body;
+    console.log("PlaceOrder Request:", { paymentMethod, totalAmount, itemCount: cartItems?.length });
 
-    if (cartItems.length == 0 || !cartItems) {
-      return res.status(400).json({ message: "cart empty" });
+    if (!cartItems || cartItems.length == 0) {
+      return res.status(400).json({ message: "Cart is empty" });
     }
 
     if (
+      !deliveryAddress ||
       !deliveryAddress.text ||
       !deliveryAddress.latitude ||
       !deliveryAddress.longitude
@@ -34,11 +30,22 @@ export const placeOrder = async (req, res) => {
     const groupItemsByShop = {};
 
     cartItems.forEach((item) => {
-      const shopId = item.shop;
-      if (!groupItemsByShop[shopId]) {
-        groupItemsByShop[shopId] = [];
+      // Ensure shopId is a string
+      const shopId = typeof item.shop === 'object' && item.shop !== null 
+        ? (item.shop._id || item.shop.toString()) 
+        : item.shop;
+        
+      if (!shopId) {
+          console.warn("Item with missing shopId:", item);
+          return;
       }
-      groupItemsByShop[shopId].push(item);
+
+      const shopIdStr = String(shopId);
+
+      if (!groupItemsByShop[shopIdStr]) {
+        groupItemsByShop[shopIdStr] = [];
+      }
+      groupItemsByShop[shopIdStr].push(item);
     });
 
     //! Api for order details
@@ -47,7 +54,7 @@ export const placeOrder = async (req, res) => {
         const shop = await Shop.findById(shopId).populate("owner");
 
         if (!shop || !shop.owner) {
-          return res.status(400).json({ message: "Shop not found" + shopId }); // change to add || !shop.owner
+          throw new Error("Shop not found or owner missing: " + shopId);
         }
 
         const items = groupItemsByShop[shopId];
@@ -62,7 +69,7 @@ export const placeOrder = async (req, res) => {
           owner: shop.owner._id,
           subtotal,
           shopOrderItems: items.map((i) => ({
-            item: i.id,
+            item: i.id || i._id, // Handle both id and _id
             price: i.price,
             quantity: i.quantity,
             name: i.name,
@@ -73,6 +80,15 @@ export const placeOrder = async (req, res) => {
 
     //! logic for RazerPay
     if (paymentMethod == "online") {
+      if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+         throw new Error("Razorpay credentials missing in backend environment");
+      }
+      
+      const instance = new Razorpay({
+          key_id: process.env.RAZORPAY_KEY_ID,
+          key_secret: process.env.RAZORPAY_KEY_SECRET,
+      });
+
       const razorOrder = await instance.orders.create({
         amount: Math.round(totalAmount * 100),
         currency: "INR",
@@ -91,7 +107,6 @@ export const placeOrder = async (req, res) => {
       return res.status(200).json({
         razorOrder,
         orderId: newOrder._id,
-        //? frontend get the orderId , razorOrder (when all process complete in user click on pay amount then after another controller fetch , which build verifyPayment)
       });
     }
 
@@ -135,7 +150,8 @@ export const placeOrder = async (req, res) => {
 
     return res.status(201).json(newOrder);
   } catch (error) {
-    return res.status(500).json({ message: "place order error" });
+    console.error("Place Order Error:", error);
+    return res.status(500).json({ message: "place order error: " + error.message, error: error.message });
   }
 };
 
@@ -143,6 +159,16 @@ export const placeOrder = async (req, res) => {
 export const verifyPayment = async (req, res) => {
   try {
     const { razorpay_payment_id, orderId } = req.body;
+    
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+         throw new Error("Razorpay credentials missing in backend environment");
+    }
+
+    const instance = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+
     const payment = await instance.payments.fetch(razorpay_payment_id);
     if (!payment || payment.status != "captured") {
       return res.status(400).json({ message: "payment field or not captured" });
@@ -184,7 +210,8 @@ export const verifyPayment = async (req, res) => {
 
     return res.status(200).json(order);
   } catch (error) {
-    return res.status(500).json({ message: `verify payment error ${error}` });
+    console.error("Verify Payment Error:", error);
+    return res.status(500).json({ message: `verify payment error ${error.message}` });
   }
 };
 
@@ -490,11 +517,83 @@ export const acceptOrder = async (req, res) => {
     // shopOrder.assignment = assignment._id;
     shopOrder.assignedDeliveryBoy = req.userId;
     await order.save();
+
+    //! Populate details for real-time updates
+    const deliveryBoy = await User.findById(req.userId);
+    await order.populate("user"); // To get user socketId
+    await order.populate({
+      path: "shopOrders.shop",
+      populate: { path: "owner" } // To get owner socketId
+    });
+
+    // Re-find the shopOrder because populate modified the structure
+    const updatedShopOrder = order.shopOrders.find((so) =>
+      so._id.equals(assignment.shopOrderId)
+    );
+
+    const io = req.app.get("io");
+    if (io) {
+      // Notify User
+      if (order.user && order.user.socketId) {
+        io.to(order.user.socketId).emit("delivery-partner-assigned", {
+          orderId: order._id,
+          shopId: updatedShopOrder.shop._id,
+          deliveryBoy: {
+            fullName: deliveryBoy.fullName,
+            mobile: deliveryBoy.mobile,
+          },
+        });
+      }
+
+      // Notify Owner
+      const shopOwner = updatedShopOrder.shop?.owner;
+      if (shopOwner && shopOwner.socketId) {
+        io.to(shopOwner.socketId).emit("assignment-accepted", {
+          orderId: order._id,
+          shopId: updatedShopOrder.shop._id,
+          deliveryBoy: {
+            _id: deliveryBoy._id,
+            fullName: deliveryBoy.fullName,
+            mobile: deliveryBoy.mobile,
+          },
+        });
+      }
+    }
+
     return res.status(200).json({ message: "Order Accepted Successfully" });
   } catch (error) {
     return res
       .status(500)
       .json({ message: `accept order error ${error.message}` });
+  }
+};
+
+//! logic to reject the order by deliveryBoy
+export const rejectAssignment = async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+    const userId = req.userId;
+
+    const assignment = await DeliveryAssignment.findByIdAndUpdate(
+      assignmentId,
+      {
+        $pull: { broadcastedTo: userId },
+        $addToSet: { rejectedBy: userId },
+      },
+      { new: true }
+    );
+
+    if (!assignment) {
+      return res.status(404).json({ message: "Assignment not found" });
+    }
+
+    return res
+      .status(200)
+      .json({ message: "Assignment rejected successfully" });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: `reject assignment error ${error.message}` });
   }
 };
 

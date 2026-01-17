@@ -2,6 +2,15 @@ import mongoose from "mongoose";
 import Shop from "../models/shop.model.js";
 import uploadOnCloudinary from "../utils/cloudinary.js";
 
+export const getAllServiceableCities = async (req, res) => {
+  try {
+    const cities = await Shop.distinct("city");
+    return res.status(200).json(cities);
+  } catch (error) {
+    return res.status(500).json({ message: `get cities error: ${error.message}` });
+  }
+};
+
 export const createEditShop = async (req, res) => {
   try {
     const { name, state, city, address } = req.body;

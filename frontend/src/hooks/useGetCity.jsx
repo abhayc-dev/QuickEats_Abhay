@@ -29,8 +29,17 @@ function useGetCity() {
       dispatch(setAddress(result?.data?.results[0].formatted))
 
     }, (error) => {
-      console.error("Error getting location:", error);
-    })
+      console.warn("Location detection failed (falling back to default):", error.message);
+      // Fallback to New Delhi if location access fails
+      const defaultLat = 28.6139;
+      const defaultLon = 77.2090;
+
+      dispatch(setLocation({ lat: defaultLat, lon: defaultLon }));
+      dispatch(setCurrentCity("New Delhi"));
+      dispatch(setCurrentState("Delhi"));
+      dispatch(setCurrentAddress("New Delhi, India"));
+      dispatch(setAddress("New Delhi, India"));
+    }, { timeout: 30000 })
   }, [])
 
 }

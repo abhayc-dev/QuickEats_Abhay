@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RxCross2 } from "react-icons/rx";
 import axios from "axios";
 import { serverUrl } from "../config";
-import { setSearchItems, setUserData } from "../redux/userSlice";
+import { setSearchItems, setUserData, setCurrentCity } from "../redux/userSlice";
 import { FaPlus } from "react-icons/fa6";
 import { LuReceiptSwissFranc } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
@@ -25,6 +25,20 @@ function Nav() {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const [availableCities, setAvailableCities] = useState([]);
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const res = await axios.get(`${serverUrl}/api/shop/cities`);
+        setAvailableCities(res.data);
+      } catch (err) {
+        console.error("Failed to fetch cities", err);
+      }
+    };
+    fetchCities();
+  }, []);
 
   const [query, setQuery] = useState([]);
 
@@ -97,13 +111,13 @@ function Nav() {
   }, [query]);
 
   return (
-    <div className="w-full h-[60px] flex items-center justify-between px-4 md:px-10 fixed top-0 z-50 shadow-md bg-gradient-to-t from-gray-100 to-gray-100">
+    <div className="w-full h-[70px] flex items-center justify-between px-4 md:px-10 fixed top-0 z-50 shadow-sm bg-white/80 backdrop-blur-md border-b border-orange-100 transition-all duration-300">
       {/* //! Logo */}
       <h1
-        className="text-2xl md:text-3xl font-extrabold text-[#ff4d2d] tracking-wide cursor-pointer"
+        className="text-2xl md:text-3xl font-black tracking-tight cursor-pointer flex items-center gap-1"
         onClick={() => navigate("/")}
       >
-        Quick<span className="text-gray-600">Eats</span>
+        <span className="text-orange-600">Quick</span><span className="text-yellow-500">Eats</span>
       </h1>
 
       {/* //! Search (mobile toggle + desktop inline)  not user Data */}
@@ -138,27 +152,63 @@ function Nav() {
           )}
 
           {/* //! Desktop Search */}
-          <div className="hidden md:flex items-center border border-[#ff4d2d]/20 shadow-sm rounded-full px-4 py-2 w-[50%] lg:w-[40%] bg-[#FAF9F6]">
-            <FaLocationDot size={20} className="text-[#ff4d2d]" />
-            <span className="truncate text-sm text-gray-500 px-2 border-r border-gray-300">
-              {currentCity}
-            </span>
-            <IoMdSearch size={20} className="ml-3 text-[#ff4d2d]" />
+          <div className="hidden md:flex items-center border border-orange-100 shadow-inner rounded-full px-4 py-2.5 w-[50%] lg:w-[40%] bg-orange-50/50 hover:bg-orange-50 focus-within:bg-orange-50 focus-within:ring-2 focus-within:ring-orange-200 transition-all duration-300 relative">
+            <FaLocationDot size={18} className="text-orange-500 flex-shrink-0" />
+
+            {/* Location Dropdown */}
+            <div className="relative group h-full flex items-center">
+              <select
+                className="appearance-none bg-transparent text-sm text-gray-600 px-3 border-r border-orange-200 font-medium outline-none cursor-pointer w-32 truncate"
+                value={currentCity || ""}
+                onChange={(e) => {
+                  if (e.target.value === "DETECT_LOCATION") {
+                    navigator.geolocation.getCurrentPosition(async (position) => {
+                      const { latitude, longitude } = position.coords;
+                      // mapSlice
+                      // dispatch(setLocation({ lat: latitude, lon: longitude }));
+                      const apikey = import.meta.env.VITE_GEOAPIKEY;
+                      try {
+                        const result = await axios.get(`https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&format=json&apiKey=${apikey}`);
+                        const city = result?.data?.results[0].city || result?.data?.results[0].county;
+                        dispatch(setCurrentCity(city));
+                        // dispatch(setCurrentAddress(result?.data?.results[0].formatted));
+                      } catch (err) {
+                        console.error("Geo error", err);
+                      }
+                    }, (error) => {
+                      alert("Location access denied. Please select manually.");
+                    });
+                  } else {
+                    dispatch(setCurrentCity(e.target.value));
+                  }
+                }}
+              >
+                <option value={currentCity} className="font-bold text-orange-600">{currentCity}</option>
+                <option disabled>──────────</option>
+                <option value="DETECT_LOCATION" className="font-bold text-blue-600">◎ Detect My Location</option>
+                <option disabled>──────────</option>
+                {availableCities.map((city) => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+            </div>
+
+            <IoMdSearch size={22} className="ml-3 text-orange-400 flex-shrink-0" />
             <input
               type="text"
-              placeholder="Search for dishes, cuisines..."
-              className="flex-1 ml-2 text-sm outline-none text-gray-700 bg-transparent"
+              placeholder="Search for dishes..."
+              className="flex-1 ml-2 text-sm outline-none text-gray-700 bg-transparent placeholder-gray-400 font-medium min-w-0"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
             <button
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-full hover:bg-orange-200/50 transition-colors flex-shrink-0"
               onClick={() => startListening()}
             >
               {isListening ? (
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
               ) : (
-                <FaMicrophone size={16} className="text-gray-400" />
+                <FaMicrophone size={16} className="text-orange-400" />
               )}
             </button>
           </div>
@@ -172,9 +222,33 @@ function Nav() {
           {search && (
             <div className="absolute top-[75px] left-1/2 -translate-x-1/2 w-[90%] bg-white shadow-xl rounded-full flex items-center gap-3 px-4 py-2 md:hidden">
               <FaLocationDot size={20} className="text-[#ff4d2d]" />
-              <span className="truncate text-sm text-gray-500">
-                {currentCity}
-              </span>
+              <select
+                className="truncate text-sm text-gray-500 appearance-none bg-transparent outline-none max-w-[100px]"
+                value={currentCity || ""}
+                onChange={(e) => {
+                  if (e.target.value === "DETECT_LOCATION") {
+                    navigator.geolocation.getCurrentPosition(async (position) => {
+                      const { latitude, longitude } = position.coords;
+                      const apikey = import.meta.env.VITE_GEOAPIKEY;
+                      try {
+                        const result = await axios.get(`https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&format=json&apiKey=${apikey}`);
+                        const city = result?.data?.results[0].city || result?.data?.results[0].county;
+                        dispatch(setCurrentCity(city));
+                      } catch (err) {
+                        console.error("Geo error", err);
+                      }
+                    });
+                  } else {
+                    dispatch(setCurrentCity(e.target.value));
+                  }
+                }}
+              >
+                <option value={currentCity}>{currentCity}</option>
+                <option value="DETECT_LOCATION">◎ Detect Location</option>
+                {availableCities.map((city) => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
               <IoMdSearch size={20} className="text-gray-400" />
               <input
                 type="text"
@@ -197,27 +271,59 @@ function Nav() {
           )}
 
           {/* //! Desktop Search */}
-          <div className="hidden md:flex items-center border border-[#ff4d2d]/20 shadow-sm rounded-full px-4 py-2 w-[50%] lg:w-[40%] bg-[#FAF9F6]">
-            <FaLocationDot size={20} className="text-[#ff4d2d]" />
-            <span className="truncate text-sm text-gray-500 px-2 border-r border-gray-300">
-              {currentCity}
-            </span>
-            <IoMdSearch size={20} className="ml-3 text-[#ff4d2d]" />
+          <div className="hidden md:flex items-center border border-orange-100 shadow-inner rounded-full px-4 py-2.5 w-[50%] lg:w-[40%] bg-orange-50/50 hover:bg-orange-50 focus-within:bg-orange-50 focus-within:ring-2 focus-within:ring-orange-200 transition-all duration-300 relative">
+            <FaLocationDot size={18} className="text-orange-500 flex-shrink-0" />
+            {/* Location Dropdown */}
+            <div className="relative group h-full flex items-center">
+              <select
+                className="appearance-none bg-transparent text-sm text-gray-600 px-3 border-r border-orange-200 font-medium outline-none cursor-pointer w-32 truncate"
+                value={currentCity || ""}
+                onChange={(e) => {
+                  if (e.target.value === "DETECT_LOCATION") {
+                    navigator.geolocation.getCurrentPosition(async (position) => {
+                      const { latitude, longitude } = position.coords;
+                      const apikey = import.meta.env.VITE_GEOAPIKEY;
+                      try {
+                        const result = await axios.get(`https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&format=json&apiKey=${apikey}`);
+                        const city = result?.data?.results[0].city || result?.data?.results[0].county;
+                        dispatch(setCurrentCity(city));
+                      } catch (err) {
+                        console.error("Geo error", err);
+                      }
+                    }, (error) => {
+                      alert("Location access denied");
+                    });
+                  } else {
+                    dispatch(setCurrentCity(e.target.value));
+                  }
+                }}
+              >
+                <option value={currentCity} className="font-bold text-orange-600">{currentCity}</option>
+                <option disabled>──────────</option>
+                <option value="DETECT_LOCATION" className="font-bold text-blue-600">◎ Detect My Location</option>
+                <option disabled>──────────</option>
+                {availableCities.map((city) => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+            </div>
+
+            <IoMdSearch size={22} className="ml-3 text-orange-400 flex-shrink-0" />
             <input
               type="text"
-              placeholder="Search for dishes, cuisines..."
-              className="flex-1 ml-2 text-sm outline-none text-gray-700 bg-transparent"
+              placeholder="Search for dishes..."
+              className="flex-1 ml-2 text-sm outline-none text-gray-700 bg-transparent placeholder-gray-400 font-medium min-w-0"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
             <button
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-full hover:bg-orange-200/50 transition-colors flex-shrink-0"
               onClick={() => startListening()}
             >
               {isListening ? (
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
               ) : (
-                <FaMicrophone size={16} className="text-gray-400" />
+                <FaMicrophone size={16} className="text-orange-400" />
               )}
             </button>
           </div>
@@ -261,22 +367,7 @@ function Nav() {
         {/* //! Owner Actions */}
         {userData?.role === "owner" && (
           <>
-            {myShopData && (
-              <>
-                <button
-                  className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d] hover:bg-[#ff4d2d]/20 transition"
-                  onClick={() => navigate("/add-items")}
-                >
-                  <FaPlus size={16} /> Add Item
-                </button>
-                <button
-                  className="md:hidden flex items-center p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]"
-                  onClick={() => navigate("/add-items")}
-                >
-                  <FaPlus size={18} />
-                </button>
-              </>
-            )}
+
             <div
               className="relative hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d] cursor-pointer hover:bg-[#ff4d2d]/20 transition"
               onClick={() => navigate("/my-orders")}

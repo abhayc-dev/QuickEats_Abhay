@@ -154,21 +154,38 @@ const userSlice = createSlice({
       state.myOrders = [action.payload,...state.myOrders ]
     },
     updateOrderStatus: (state, action) => {
-      const {orderId, shopId, status} = action.payload
-      const order = state.myOrders.find(o => o._id == orderId) 
-      if(order){
-        if(order.shopOrders && order.shopOrders.shop._id == shopId) {
-             order.shopOrders.status = status
+      const { orderId, shopId, status } = action.payload;
+      const order = state.myOrders.find((o) => o._id == orderId);
+      if (order) {
+        if (Array.isArray(order.shopOrders)) {
+          const shopOrder = order.shopOrders.find(
+            (so) => (so.shop?._id || so.shop) == shopId
+          );
+          if (shopOrder) shopOrder.status = status;
+        } else if (order.shopOrders) {
+          if ((order.shopOrders.shop?._id || order.shopOrders.shop) == shopId) {
+            order.shopOrders.status = status;
+          }
         }
       }
     },
-    updateRealtimeStatus:(state, action) => {
-        const {orderId, shopId, status} = action.payload
-      const order = state.myOrders.find(o => o._id == orderId) 
-      if(order){
-        const shopOrder = order.shopOrders.find(so => so.shop._id == shopId)
-        if(shopOrder){
-          shopOrder.status = status;
+    updateRealtimeStatus: (state, action) => {
+      const { orderId, shopId, status, deliveryBoy } = action.payload;
+      const order = state.myOrders.find((o) => o._id == orderId);
+      if (order) {
+        if (Array.isArray(order.shopOrders)) {
+          const shopOrder = order.shopOrders.find(
+            (so) => (so.shop?._id || so.shop) == shopId
+          );
+          if (shopOrder) {
+            if (status) shopOrder.status = status;
+            if (deliveryBoy) shopOrder.assignedDeliveryBoy = deliveryBoy;
+          }
+        } else if (order.shopOrders) {
+          if ((order.shopOrders.shop?._id || order.shopOrders.shop) == shopId) {
+            if (status) order.shopOrders.status = status;
+            if (deliveryBoy) order.shopOrders.assignedDeliveryBoy = deliveryBoy;
+          }
         }
       }
     },

@@ -1,8 +1,5 @@
-//! Owner Items Card
-
+import { Edit2, Trash2 } from 'lucide-react';
 import React from "react";
-import { MdModeEditOutline } from "react-icons/md";
-import { FaTrash } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { serverUrl } from "../src/config";
@@ -12,7 +9,6 @@ import { setMyShopData } from "../src/redux/ownerSlice";
 //! data comes from OwnerDashBoard
 const OwnerItemCard = ({ data }) => {
   const navigate = useNavigate();
-
   const dispatch = useDispatch();
 
   //! fetch the delete api.
@@ -29,45 +25,44 @@ const OwnerItemCard = ({ data }) => {
   };
 
   return (
-    <div className="flex bg-gray rounded-lg shadow-md overflow-hidden border border-[#ff4d2d] w-full max-w-2xl mb-4">
-      <div className="w-36 aspect-square flex-shrink-0 bg-gray-50">
-        <img src={data.image} alt="" className="w-full h-full object-cover" />
+    <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group h-full">
+      <div className="w-32 sm:w-40 bg-gray-100 relative overflow-hidden">
+        <img src={data.image} alt={data.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
       </div>
 
-      <div className="flex flex-col justify-between p-3 flex-1">
+      <div className="flex flex-col justify-between p-4 flex-1">
         <div>
-          <h2 className="text-base font-semibold text-[#ff4d2d]">
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${data.foodType === 'Veg' || data.foodType === 'veg'
+                ? 'bg-green-50 text-green-700 border-green-100'
+                : 'bg-red-50 text-red-700 border-red-100'
+              }`}>
+              {data.foodType}
+            </span>
+            <span className="text-[10px] text-gray-500 font-bold px-2 py-0.5 bg-gray-50 rounded-full border border-gray-100 uppercase tracking-wide">
+              {data.category}
+            </span>
+          </div>
+
+          <h2 className="text-lg font-bold text-gray-900 group-hover:text-orange-600 transition-colors line-clamp-1">
             {data.name}
           </h2>
-          <p>
-            <span className="font-medium text-gray-70">Category:</span>{" "}
-            {data.category}
-          </p>
-          <p>
-            <span className="font-medium text-gray-70">Food Type:</span>{" "}
-            {data.foodType}
-          </p>
+          <div className="text-xl font-black text-gray-900 mt-1">₹{data.price}</div>
         </div>
-        <div className="flex items-center justify-between">
-          <div className="text-[#ff4d2d] font-bold">₹{data.price}</div>
-          <div className="flex items-center gap-2">
 
-            {/* //! EditItem Button */}
-            <div
-              className="p-2 cursor-pointer rounded-full hover:bg-[#ff4d2d]/10 text-[#ff4d2d]"
-              onClick={() => navigate(`/edit-items/${data._id}`)}
-            >
-              <MdModeEditOutline size={16} />
-            </div>
-
-           {/* //! Delete Button */}
-            <div
-              className="p-2 cursor-pointer rounded-full hover:bg-[#ff4d2d]/10 text-[#ff4d2d]"
-              onClick={handelDeleteItem}
-            >
-              <FaTrash size={16} />
-            </div>
-          </div>
+        <div className="flex items-center gap-2 mt-4">
+          <button
+            onClick={() => navigate(`/edit-items/${data._id}`)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-700 bg-gray-50 rounded-lg hover:bg-black hover:text-white transition-all border border-gray-100"
+          >
+            <Edit2 size={14} /> Edit
+          </button>
+          <button
+            onClick={handelDeleteItem}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-red-600 bg-red-50 rounded-lg hover:bg-red-600 hover:text-white transition-all border border-red-50"
+          >
+            <Trash2 size={14} /> Delete
+          </button>
         </div>
       </div>
     </div>

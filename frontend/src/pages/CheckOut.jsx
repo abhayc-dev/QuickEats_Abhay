@@ -76,9 +76,80 @@ const CheckOut = () => {
     getAddressByLatLng(latitude, longitude);
   };
 
+  const [loading, setLoading] = useState(false);
+
   //! Fetch the API from backend
   const handlePlaceOrder = async () => {
+    // Validation
+    if (!addressInput) {
+      alert("Please enter a delivery address.");
+      return;
+    }
+    if (!location?.lat || !location?.lon) {
+      alert("Please set your location on the map.");
+      return;
+    }
+
+    // Check if Razorpay SDK is needed and loaded
+    if (paymentMethod === "online" && !window.Razorpay) {
+      console.warn("Razorpay SDK not found, attempting to load...");
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      document.body.appendChild(script);
+
+      // Wait for script to load (simple poll)
+      await new Promise((resolve) => {
+        script.onload = resolve;
+        setTimeout(resolve, 2000); // Wait 2s max then try anyway (handlers might fail but at least we tried)
+      });
+
+      if (!window.Razorpay) {
+        alert("Payment system failed to load. Please refresh the page check your internet connection.");
+        return;
+      }
+    }
+
+    // Long Distance Check
     try {
+      const geoResult = await axios.get(
+        `https://api.geoapify.com/v1/geocode/reverse?lat=${location.lat}&lon=${location.lon}&format=json&apiKey=${apikey}`
+      );
+      const checkoutCity = geoResult?.data?.results[0]?.city || geoResult?.data?.results[0]?.county || geoResult?.data?.results[0]?.state_district;
+      // console.log("Checkout City:", checkoutCity);
+
+      // Check shop cities from cart items
+      // Ensure we handle object or ID logic safely.
+      // If Shop.jsx injection worked, item.shop is an object with city.
+      const distinctShopCities = [...new Set(cartItems.map(item => item?.shop?.city).filter(Boolean))];
+      // console.log("Shop Cities:", distinctShopCities);
+
+      if (checkoutCity && distinctShopCities.length > 0) {
+        const isFar = distinctShopCities.some(shopCity => shopCity.toLowerCase().trim() !== checkoutCity.toLowerCase().trim());
+
+        if (isFar) {
+          alert(
+            `Order Restricted: Your delivery location (${checkoutCity}) is too far from the restaurant's location (${distinctShopCities.join(", ")}). Please select a closer delivery address to proceed.`
+          );
+          return; // Stop execution
+        }
+      }
+    } catch (err) {
+      console.warn("Distance check warning:", err);
+      // We continue if the API fails, to avoid blocking valid orders due to tech glitches.
+      // But if user insists on strictness, we could block here too.
+      // For now, assuming the "order ho gaya" was due to missing city data in cart items, which I fixed in Shop.jsx.
+    }
+
+    try {
+      setLoading(true);
+      console.log("Placing order...", {
+        paymentMethod,
+        address: addressInput,
+        total: AmountWithDeliveryFee
+      });
+
+      // Added timeout to prevent hanging
       const result = await axios.post(
         `${serverUrl}/api/order/place-order`,
         {
@@ -91,8 +162,13 @@ const CheckOut = () => {
           totalAmount: AmountWithDeliveryFee,
           cartItems,
         },
-        { withCredentials: true }
+        {
+          withCredentials: true,
+          timeout: 45000 // 45 seconds timeout
+        }
       );
+
+      console.log("Order placed response:", result.data);
 
       //! check condition for payment
       if (paymentMethod == "cod") {
@@ -102,21 +178,39 @@ const CheckOut = () => {
       } else {
         const orderId = result.data.orderId;
         const razorOrder = result.data.razorOrder;
-        openRazorpayWindow(orderId, razorOrder);
+        if (orderId && razorOrder) {
+          openRazorpayWindow(orderId, razorOrder);
+        } else {
+          throw new Error("Invalid response from server (missing order details)");
+        }
       }
     } catch (error) {
-      console.log(error);
+      console.error("Place order failed:", error);
+      let msg = "Failed to place order.";
+      if (error.code === 'ECONNABORTED') {
+        msg = "Request timed out. Please check your internet connection or try again.";
+      } else if (error.response?.data?.message) {
+        msg = error.response.data.message;
+      }
+      alert(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
   //! function for open razorPay windows
   const openRazorpayWindow = (orderId, razorOrder) => {
+    if (!window.Razorpay) {
+      alert("Razorpay SDK not loaded. Please check your internet connection.");
+      return;
+    }
+
     const options = {
       key: import.meta.env.VITE_RAZORPAY_KEY_ID,
       amount: razorOrder.amount,
       currency: "INR",
-      name: "Vicky Sweet's Shop",
-      description: "Food Delivery Website",
+      name: "Quick Eats",
+      description: "Food Delivery",
       order_id: razorOrder.id,
       theme: {
         color: "#ff4d2d", // Brand theme color
@@ -135,12 +229,22 @@ const CheckOut = () => {
           dispatch(clearCart());
           navigate("/order-placed");
         } catch (error) {
-          console.log(error);
+          console.error("Payment Verification Failed:", error);
+          alert("Payment Verification Failed");
         }
+      },
+      prefill: {
+        name: userData?.fullName,
+        email: userData?.email,
+        contact: userData?.mobile,
       },
     };
 
     const rzp = new window.Razorpay(options);
+    rzp.on("payment.failed", function (response) {
+      alert("Payment Failed: " + response.error.description);
+      console.error("Payment Failed:", response.error);
+    });
     rzp.open();
   };
 
@@ -151,6 +255,11 @@ const CheckOut = () => {
   useEffect(() => {
     setAddressInput(address);
   }, [address]);
+
+  //! Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   //! function for get lat & long through Address
   const getLatLonByAddress = async () => {
@@ -168,173 +277,214 @@ const CheckOut = () => {
   };
 
   return (
-    <div className="min-h-screen flex justify-center p-6 items-center bg-[#FAF9F6]">
-      <div
-        className="absolute top-[20px] left-[20px] z-[10] mb-[10px]"
-        onClick={() => {
-          navigate("/");
-        }}
-      >
-        <IoIosArrowRoundBack size={35} className="text-[#ff4d2d]" />
-      </div>
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden flex justify-center px-4 sm:px-6 lg:px-8 items-start bg-gray-50/50 pt-8 pb-10 lg:pt-2 lg:pb-0">
+      <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-8">
 
-      {/* //! checkout-div */}
-      <div className="w-full max-w-[900px] bg-gray-100 rounded-2xl shadow-xl p-6 space-y-6">
-        <h1 className="text-2xl font-bold text-gray-700"> CheckOut</h1>
+        {/* Left Section - Details */}
+        <div className="flex-1 space-y-6">
 
-        {/* //! mapSection */}
-        <section>
-          <h2 className="text-lg font-semibold mb-2 flex items-center gap-2 text-gray-700">
-            <ImLocation2 className="text-[#ff4d2d]" /> Delivery Location
-          </h2>
-          <div className="flex gap-2 mb-3">
-            <input
-              type="text"
-              className="flex-1 border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff4d2d]"
-              placeholder="Enter Your Delivery Address.."
-              value={addressInput}
-              onChange={(e) => setAddressInput(e.target.value)}
-            />
+          {/* Header */}
+          <div className="flex items-center gap-4 mb-2">
             <button
-              className="bg-[#ff4d2d] hover:bg-[#e64526] text-white px-3 py-2 rounded-lg flex items-center justify-center cursor-pointer"
-              onClick={getLatLonByAddress}
+              onClick={() => navigate(-1)}
+              className="p-2 bg-white rounded-full hover:bg-gray-100 shadow-sm transition-all group"
             >
-              <GoSearch size={17} />
+              <IoIosArrowRoundBack size={28} className="text-gray-600 group-hover:text-orange-600" />
             </button>
-            <button
-              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg flex items-center justify-center cursor-pointer"
-              onClick={getCurrentLocation}
-            >
-              <MdMyLocation />
-            </button>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Checkout</h1>
           </div>
-          <div className="rounded-xl border overflow-hidden">
-            <div className="h-64 w-full flex items-center justify-center bg-gray-50">
-              {location?.lat && location?.lon ? (
-                <MapContainer
-                  className={"w-full h-full"}
-                  center={[location.lat, location.lon]}
-                  zoom={16}
+
+          {/* Delivery Location Section */}
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8">
+            <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center">
+                <ImLocation2 size={16} />
+              </span>
+              Delivery Location
+            </h2>
+
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+              <input
+                type="text"
+                className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-gray-50/50 w-full"
+                placeholder="Enter your complete delivery address..."
+                value={addressInput}
+                onChange={(e) => setAddressInput(e.target.value)}
+              />
+              <div className="flex gap-3 w-full sm:w-auto">
+                <button
+                  className="flex-1 sm:flex-none bg-gray-900 hover:bg-gray-800 text-white px-5 py-3 rounded-xl flex items-center justify-center gap-2 font-medium transition-all shadow-sm"
+                  onClick={getLatLonByAddress}
                 >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  <RecenterMap location={location} />
-                  <Marker
-                    position={[location.lat, location.lon]}
-                    draggable
-                    eventHandlers={{ dragend: onDragEnd }}
-                  />
-                </MapContainer>
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-3">
-                  <p className="text-gray-500 font-medium">Location not detected</p>
-                  <button
-                    onClick={getCurrentLocation}
-                    className="text-white bg-[#ff4d2d] px-4 py-2 rounded-lg shadow hover:bg-[#e64526] transition"
+                  <GoSearch size={18} />
+                  <span className="hidden sm:inline">Search</span>
+                </button>
+                <button
+                  className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl flex items-center justify-center gap-2 font-medium transition-all shadow-sm shadow-blue-200"
+                  onClick={getCurrentLocation}
+                >
+                  <MdMyLocation size={18} />
+                  <span className="hidden sm:inline">Locate Me</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm relative">
+              <div className="h-72 w-full bg-gray-100">
+                {location?.lat && location?.lon ? (
+                  <MapContainer
+                    className={"w-full h-full z-0"}
+                    center={[location.lat, location.lon]}
+                    zoom={16}
                   >
-                    Detect My Location
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* //! payment-Section */}
-        <section>
-          <h2 className="text-lg font-semibold mb-3 text-gray-700">
-            Payment Method
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div
-              className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${paymentMethod === "cod"
-                  ? "border-[#f24c4cb9] shadow bg-[#FAF9F6]"
-                  : "border-gray-200 bg-gray-50 hover:border-gray-300"
-                }`}
-              onClick={() => setPaymentMethod("cod")}
-            >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                <FcMoneyTransfer size={20} />
-              </span>
-              <div>
-                <p className="font-medium text-gray-700">Cash On Delivery</p>
-                <p className="text-xs text-gray-500">
-                  Pay in cash when your food arrives.
-                </p>
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <RecenterMap location={location} />
+                    <Marker
+                      position={[location.lat, location.lon]}
+                      draggable
+                      eventHandlers={{ dragend: onDragEnd }}
+                    />
+                  </MapContainer>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full gap-4 bg-gray-50">
+                    <p className="text-gray-500 font-medium">Map location unavailable</p>
+                    <button
+                      onClick={getCurrentLocation}
+                      className="text-white bg-orange-600 px-6 py-2.5 rounded-full shadow-lg hover:bg-orange-700 transition font-medium text-sm"
+                    >
+                      Detect My Location
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
-            <div
-              className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${paymentMethod === "online"
-                  ? "border-[#f24c4cb9] shadow bg-[#FAF9F6]"
-                  : "border-gray-200 bg-gray-50 hover:border-gray-300"
-                }`}
-              onClick={() => setPaymentMethod("online")}
-            >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
-                <FaMobileScreenButton size={20} className="text-purple-500" />
-              </span>
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                <FaCreditCard size={20} className="text-blue-600" />
-              </span>
-              <div>
-                <p className="font-medium text-gray-700">
-                  Credit Card / Debit Card / UPI
-                </p>
-                <p className="text-xs text-gray-500">
-                  Pay securely online before delivery.
-                </p>
+              <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg text-xs font-medium text-gray-500 border border-gray-200 shadow-sm z-[400]">
+                Drag marker to adjust
               </div>
             </div>
           </div>
-        </section>
 
-        {/* //! Order Summery */}
-        <section>
-          <h2 className="text-lg font-semibold mb-3 text-gray-700">
-            {" "}
-            Order Summary
-          </h2>
-          <div className="rounded-xl border bg-gray-200 p-4 space-y-2">
-            {cartItems.map((item, index) => (
+          {/* Payment Method Section */}
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8">
+            <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                <FcMoneyTransfer size={16} />
+              </span>
+              Payment Method
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div
-                key={index}
-                className="flex justify-between text-sm text-gray-700"
+                className={`relative p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col gap-3 group overflow-hidden ${paymentMethod === "cod"
+                  ? "border-orange-500 bg-orange-50/30 shadow-md shadow-orange-100"
+                  : "border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50"
+                  }`}
+                onClick={() => setPaymentMethod("cod")}
               >
-                <span>
-                  {item.name} x {item.quantity}
-                </span>
-                <span>₹{item.price * item.quantity}</span>
+                {paymentMethod === "cod" && (
+                  <div className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] uppercase font-bold px-2 py-1 rounded-bl-lg">Selected</div>
+                )}
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                    <FcMoneyTransfer size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 group-hover:text-orange-700 transition-colors">Cash On Delivery</h3>
+                    <p className="text-xs text-gray-500">Traditional & Reliable</p>
+                  </div>
+                </div>
               </div>
-            ))}
 
-            <hr className="border-gray-300 my-2" />
-
-            <div className="flex justify-between font-medium text-gray-700">
-              <span>Subtotal</span>
-              <span>₹{totalAmount}</span>
-            </div>
-
-            <div className="flex justify-between text-gray-700">
-              <span>Delivery Fee</span>
-              <span>{deliveryFee == 0 ? "Free" : deliveryFee}</span>
-            </div>
-
-            <div className="flex justify-between text-lg font-bold text-[#ff4d2d] pt-2">
-              <span>Total</span>
-              <span>₹{AmountWithDeliveryFee}</span>
+              <div
+                className={`relative p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col gap-3 group overflow-hidden ${paymentMethod === "online"
+                  ? "border-purple-500 bg-purple-50/30 shadow-md shadow-purple-100"
+                  : "border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50"
+                  }`}
+                onClick={() => setPaymentMethod("online")}
+              >
+                {paymentMethod === "online" && (
+                  <div className="absolute top-0 right-0 bg-purple-500 text-white text-[10px] uppercase font-bold px-2 py-1 rounded-bl-lg">Selected</div>
+                )}
+                <div className="flex items-center gap-3">
+                  <div className="flex -space-x-2">
+                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 border-2 border-white ring-1 ring-gray-100">
+                      <FaMobileScreenButton size={18} />
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 border-2 border-white ring-1 ring-gray-100">
+                      <FaCreditCard size={18} />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 group-hover:text-purple-700 transition-colors">Online Payment</h3>
+                    <p className="text-xs text-gray-500">UPI, Cards & More</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </section>
+        </div>
 
-        {/* //! Order Summery */}
-        <button
-          className="w-full bg-[#ff4d2d] hover:bg-[#e64526] text-white py-3 rounded-xl font-semibold"
-          onClick={handlePlaceOrder}
-        >
-          {paymentMethod == "cod" ? "Place Order" : "Pay & Place Order"}
-        </button>
+        {/* Right Section - Summary */}
+        <div className="w-full lg:w-[400px]">
+          <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 p-6 border border-gray-100 lg:sticky lg:top-24">
+            <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">Order Overview</h2>
+
+            <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              {cartItems.map((item, index) => (
+                <div key={index} className="flex gap-4 items-start pb-4 border-b border-gray-50 last:border-0 last:pb-0">
+                  <div className="w-16 h-16 rounded-lg bg-gray-50 overflow-hidden shrink-0 border border-gray-100">
+                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
+                    <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                  </div>
+                  <div className="text-sm font-bold text-gray-900">
+                    ₹{item.price * item.quantity}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-3 bg-gray-50 rounded-xl p-4 mb-6">
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Item Total</span>
+                <span className="font-medium">₹{totalAmount}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Delivery Fee</span>
+                <span className={`font-medium ${deliveryFee === 0 ? 'text-green-600' : ''}`}>
+                  {deliveryFee === 0 ? "Free" : `₹${deliveryFee}`}
+                </span>
+              </div>
+              <div className="flex justify-between text-base font-bold text-gray-900 pt-2 border-t border-gray-200/50">
+                <span>To Pay</span>
+                <span className="text-2xl tracking-tight">₹{AmountWithDeliveryFee}</span>
+              </div>
+            </div>
+
+            <button
+              className={`w-full bg-gradient-to-r from-orange-600 to-red-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-orange-200 hover:shadow-orange-300 transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2 group ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+              onClick={handlePlaceOrder}
+              disabled={loading}
+            >
+              {loading ? (
+                <span>Processing...</span>
+              ) : (
+                <>
+                  <span>{paymentMethod === "cod" ? "Place Order" : "Proceed to Pay"}</span>
+                  <span className="group-hover:translate-x-1 transition-transform">→</span>
+                </>
+              )}
+            </button>
+
+            <p className="text-center text-xs text-gray-400 mt-4">
+              By placing an order, you agree to our Terms and Conditions.
+            </p>
+          </div>
+        </div>
+
       </div>
     </div>
   );
