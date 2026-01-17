@@ -16,6 +16,7 @@ import contactRouter from "./routers/contact.js";
 import reviewRouter from "./routers/review.route.js";
 
 const app = express();
+app.set("trust proxy", 1); // Trust first proxy (Render/Heroku)
 const port = process.env.PORT || 5000;
 const server = http.createServer(app);
 
