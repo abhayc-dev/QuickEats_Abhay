@@ -288,7 +288,7 @@ const CheckOut = () => {
   };
 
   return (
-    <div className="min-h-screen lg:h-screen lg:overflow-hidden flex justify-center px-4 sm:px-6 lg:px-8 items-start bg-gray-50/50 pt-8 pb-10 lg:pt-2 lg:pb-0">
+    <div className="min-h-screen lg:h-screen md:h-screen h-screen overflow-y-auto flex justify-center px-4 sm:px-6 lg:px-8 items-start bg-gray-50/50 pt-8 pb-10 lg:pt-2 lg:pb-0">
       <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-8">
 
         {/* Left Section - Details */}
