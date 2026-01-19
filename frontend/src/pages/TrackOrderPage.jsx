@@ -158,6 +158,26 @@ const TrackOrderPage = () => {
                 </div>
               </div>
 
+              {/* Delivery OTP Display (Backup for Email) */}
+              {shopOrder.deliveryOtp && shopOrder.status !== "delivered" && (
+                <div className="mx-6 sm:mx-8 mb-6 p-4 bg-orange-50 border border-orange-100 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600">
+                      <MdCheckCircle size={20} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900">Verification Code</p>
+                      <p className="text-xs text-gray-500">Share this PIN with the delivery partner upon arrival.</p>
+                    </div>
+                  </div>
+                  <div className="bg-white px-6 py-2 rounded-xl border-2 border-orange-100 shadow-sm">
+                    <span className="text-2xl font-black text-gray-800 tracking-[0.3em] font-mono">
+                      {shopOrder.deliveryOtp}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Status Timeline */}
               <div className="px-6 sm:px-8 py-8 bg-gray-50/30 border-b border-gray-100">
                 <div className="relative">

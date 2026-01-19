@@ -718,13 +718,21 @@ export const sendDeliveryOtp = async (req, res) => {
        return res.status(400).json({ message: "Customer user not found (deleted?)" });
     }
 
-    await sendOtpToDelivery(order.user, otp);
-    return res
-      .status(200)
-      .json({ 
-          message: `OTP sent to ${order?.user?.fullName}`,
-          email: order?.user?.email 
-      });
+    let emailStatus = "sent";
+    try {
+      await sendOtpToDelivery(order.user, otp);
+    } catch (mailError) {
+      console.error("Email delivery failed:", mailError);
+      emailStatus = "failed";
+    }
+
+    return res.status(200).json({
+      message: emailStatus === "sent" 
+        ? `OTP sent to ${order?.user?.fullName}` 
+        : `OTP Generated. Email Failed (Check Track Order Page).`,
+      email: order?.user?.email,
+      emailStatus
+    });
   } catch (error) {
     return res
       .status(500)
