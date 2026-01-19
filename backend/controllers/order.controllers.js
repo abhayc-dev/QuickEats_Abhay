@@ -726,6 +726,16 @@ export const sendDeliveryOtp = async (req, res) => {
       emailStatus = "failed";
     }
 
+    // Emit Real-time Event to Customer
+    const io = req.app.get("io");
+    if (io) {
+      io.to(order.user._id.toString()).emit("otp-generated", {
+        orderId,
+        shopOrderId,
+        deliveryOtp: otp,
+      });
+    }
+
     return res.status(200).json({
       message: emailStatus === "sent" 
         ? `OTP sent to ${order?.user?.fullName}` 

@@ -93,10 +93,28 @@ const TrackOrderPage = () => {
       }
     });
 
+    socket.on("otp-generated", ({ orderId: oid, shopOrderId, deliveryOtp }) => {
+      if (oid === orderId) {
+        setCurrentOrder((prev) => {
+          if (!prev) return prev;
+          const updated = { ...prev };
+          if (Array.isArray(updated.shopOrders)) {
+            updated.shopOrders = updated.shopOrders.map((so) =>
+              String(so._id) === String(shopOrderId)
+                ? { ...so, deliveryOtp } // Update OTP
+                : so
+            );
+          }
+          return updated;
+        });
+      }
+    });
+
     return () => {
       socket.off("update-status", handler);
       socket.off("orderDelivered", handler);
       socket.off("delivery-partner-assigned");
+      socket.off("otp-generated");
     };
   }, [socket, dispatch, orderId]);
 
