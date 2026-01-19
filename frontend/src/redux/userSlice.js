@@ -195,6 +195,13 @@ const userSlice = createSlice({
     },
     setSocket: (state, action) => {
          state.socket=action.payload;
+    },
+    updateShopStatus: (state, action) => {
+      const { shopId, isOpen } = action.payload;
+      const shop = state.shopsInMyCity.find((s) => s._id === shopId);
+      if (shop) {
+        shop.isOpen = isOpen;
+      }
     }
   },
 });
@@ -217,5 +224,6 @@ export const {
   setSocket,
   updateRealtimeStatus,
   clearCart,
+  updateShopStatus,
 } = userSlice.actions;
 export default userSlice.reducer;

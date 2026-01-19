@@ -15,7 +15,7 @@ import {
   updateQuantity,
 } from "../src/redux/userSlice";
 
-const FoodCard = ({ data }) => {
+const FoodCard = ({ data, shopOpen = true }) => {
   const dispatch = useDispatch();
   const { cartItems = [] } = useSelector((state) => state.user || {});
 
@@ -91,14 +91,14 @@ const FoodCard = ({ data }) => {
     : data.price;
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-lg group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 ease-in-out border border-gray-100">
+    <div className={`bg-white rounded-2xl overflow-hidden shadow-lg group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 ease-in-out border border-gray-100 ${!shopOpen ? 'opacity-70 pointer-events-none' : ''}`}>
 
       {/* //! IMAGE + OVERLAYS */}
       <div className="relative h-56 overflow-hidden">
         <img
           src={data?.image}
           alt={data?.name}
-          className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+          className={`w-full h-full object-cover transform transition-transform duration-700 ${shopOpen ? 'group-hover:scale-110' : 'grayscale'}`}
         />
 
         {/* //! small veg/fish icon top-left */}
@@ -111,7 +111,7 @@ const FoodCard = ({ data }) => {
         </div>
 
         {/* //! Discount Badge */}
-        {data.discount > 0 && (
+        {data.discount > 0 && shopOpen && (
           <div className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-sm animate-pulse">
             {data.discount}% OFF
           </div>
@@ -131,7 +131,7 @@ const FoodCard = ({ data }) => {
             )}
           </div>
           <p className="text-gray-200 text-sm mt-1 truncate font-medium">
-            {data.category || data.description || "Fresh & Delicious"}
+            {data.description || "Fresh & Delicious"}
           </p>
         </div>
       </div>
@@ -147,13 +147,18 @@ const FoodCard = ({ data }) => {
               )}
             </div>
             <div className="text-xs text-gray-500 font-medium mt-0.5">
-              {data.discount > 0 ? <span className="text-green-600 font-bold">You Save ₹{data.price - discountedPrice}</span> : "Best Served Hot"}
+              {data.discount > 0 ? <span className="text-green-600 font-bold">You Save ₹{data.price - discountedPrice}</span> : data.category}
             </div>
           </div>
 
           {/* //! Add button OR quantity controls */}
           <div>
-            {quantity > 0 ? (
+            {!shopOpen ? (
+              // Closed State Button
+              <button disabled className="bg-gray-200 text-gray-500 px-4 py-2 rounded-full text-xs font-bold cursor-not-allowed">
+                Closed
+              </button>
+            ) : quantity > 0 ? (
               <div className="flex items-center bg-orange-50 rounded-full border border-orange-100 shadow-inner">
                 <button
                   className="w-8 h-8 flex items-center justify-center text-orange-600 hover:bg-orange-200 rounded-full transition"

@@ -1,9 +1,14 @@
 //! Owner DashBoard Page
 
-import React, { useEffect } from "react";
+
+import React, { useEffect, useState } from "react";
+import { toast } from 'react-hot-toast';
 import Nav from "../src/pages/Nav";
 import { useSelector, useDispatch } from "react-redux";
-import { Store, MapPin, Edit3, Plus, Utensils } from "lucide-react";
+import {
+  Store, MapPin, Edit3, Plus, Utensils, TrendingUp,
+  ShoppingBag, Star, DollarSign, Clock, ChevronRight
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { serverUrl } from "../src/config";
@@ -12,8 +17,17 @@ import OwnerItemCard from "./OwnerItemCard";
 
 const OwnerDashboard = () => {
   const { myShopData } = useSelector((state) => state.owner);
+  const { myOrders } = useSelector((state) => state.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  // State for calculation
+  const [stats, setStats] = useState({
+    revenue: 0,
+    totalOrders: 0,
+    pendingOrders: 0,
+    rating: 0
+  });
 
   useEffect(() => {
     //! Fetch shop from backend only if we don't have it in Redux
@@ -35,8 +49,57 @@ const OwnerDashboard = () => {
     fetchShop();
   }, [myShopData, dispatch]);
 
+  // Calculate Stats
+  useEffect(() => {
+    if (myOrders && myOrders.length > 0) {
+      const rev = myOrders.reduce((acc, order) => {
+        // Only count delivered/paid orders for revenue usually, 
+        // but for now we sum all valid orders
+        if (order.payment === true || order.status === 'delivered') {
+          return acc + (order.shopOrders?.subtotal || 0);
+        }
+        return acc;
+      }, 0);
+
+      const codRev = myOrders.reduce((acc, order) => {
+        // Check for COD payment method (case insensitive)
+        const isCOD = order.paymentMethod?.toLowerCase() === 'cod';
+        const status = order.shopOrders?.status; // Check Shop-Specific Status
+
+        // Include "out of delivery" which is the backend enum value
+        if (isCOD && (status === 'delivered' || status === 'placed' || status === 'preparing' || status === 'out of delivery' || status === 'out for delivery')) {
+          return acc + (order.shopOrders?.subtotal || 0);
+        }
+        return acc;
+      }, 0);
+
+      const pending = myOrders.filter(o => ['placed', 'preparing', 'out for delivery'].includes(o.status)).length;
+
+      setStats({
+        revenue: rev,
+        codRevenue: codRev,
+        totalOrders: myOrders.length,
+        pendingOrders: pending,
+        rating: myShopData?.rating?.average || 4.5 // detailed rating logic usually in backend
+      });
+    }
+  }, [myOrders, myShopData]);
+
+  const StatCard = ({ icon: Icon, label, value, color, subText }) => (
+    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex items-start justify-between group">
+      <div>
+        <p className="text-gray-500 font-medium text-sm mb-1">{label}</p>
+        <h3 className="text-3xl font-black text-gray-900 tracking-tight">{value}</h3>
+        {subText && <p className={`text-xs font-bold mt-2 ${color}`}>{subText}</p>}
+      </div>
+      <div className={`p-3 rounded-full ${color.replace('text-', 'bg-').replace('600', '100')} ${color}`}>
+        <Icon size={24} />
+      </div>
+    </div>
+  );
+
   return (
-    <div className="w-full min-h-screen bg-[#FDFDFD] pb-20 mt-20">
+    <div className="w-full min-h-screen bg-[#F8F9FA] pb-20 mt-20">
       <Nav />
 
       {!myShopData ? (
@@ -71,65 +134,136 @@ const OwnerDashboard = () => {
         </div>
       ) : (
         //! Display, When have a Shop Data
-        <div className="max-w-4xl mx-auto px-4 pt-8 pb-20">
+        <div className="max-w-7xl mx-auto px-4 pt-6 pb-20">
 
-          {/* Shop Header */}
-          <div className="relative w-full h-[320px] rounded-[2.5rem] overflow-hidden shadow-2xl mb-10 group bg-gray-900">
-            <img
-              src={myShopData.image}
-              alt={myShopData.name}
-              className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-
-            <div className="absolute bottom-0 left-0 p-8 text-white w-full flex justify-between items-end">
-              <div>
-                <h1 className="text-5xl font-black mb-3 tracking-tighter">{myShopData.name}</h1>
-                <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-gray-300">
-                  <span className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/5">
-                    <MapPin size={14} className="text-orange-400" /> {myShopData.city}, {myShopData.state}
-                  </span>
-                  <span className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/5">
-                    <Utensils size={14} className="text-orange-400" /> {myShopData.items.length} Items Listed
-                  </span>
-                </div>
-              </div>
-
+          {/* 1. Header & ID Card Style */}
+          <div className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-sm border border-gray-100 mb-8 flex flex-col md:flex-row items-center md:items-start gap-8">
+            <div className="relative w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0">
+              <img
+                src={myShopData.image}
+                alt="Shop"
+                className="w-full h-full object-cover rounded-2xl shadow-lg border-4 border-white"
+              />
               <button
                 onClick={() => navigate("/partner/create-edit-shop")}
-                className="bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white text-white hover:text-black p-4 rounded-full transition-all shadow-lg hover:rotate-12"
-                title="Edit Shop Details"
+                className="absolute -bottom-3 -right-3 bg-gray-900 text-white p-2 rounded-full shadow-lg hover:bg-orange-600 transition-colors"
               >
-                <Edit3 size={24} />
+                <Edit3 size={16} />
+              </button>
+            </div>
+
+            <div className="flex-1 text-center md:text-left">
+              <div className="flex flex-col md:flex-row md:items-center gap-3 mb-2">
+                <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">{myShopData.name}</h1>
+                <div className="flex flex-col md:flex-row items-center gap-3">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await axios.patch(`${serverUrl}/api/shop/toggle-status`, {}, { withCredentials: true });
+                        dispatch(setMyShopData({ ...myShopData, isOpen: res.data.isOpen }));
+                      } catch (error) {
+                        console.error("Toggle status error:", error);
+                        alert("Failed to update status");
+                      }
+                    }}
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide cursor-pointer transition-all border flex items-center gap-2 ${myShopData.isOpen
+                      ? "bg-green-100 text-green-700 border-green-200 hover:bg-green-200 hover:border-green-300"
+                      : "bg-red-100 text-red-700 border-red-200 hover:bg-red-200 hover:border-red-300"
+                      }`}
+                    title="Click to Toggle Status"
+                  >
+                    <span className={`w-2 h-2 rounded-full ${myShopData.isOpen ? 'bg-green-600 animate-pulse' : 'bg-red-600'}`}></span>
+                    {myShopData.isOpen ? "Open for Orders" : "Currently Closed"}
+                  </button>
+                  <span className="text-xs text-gray-400 font-medium hidden md:block">(Tap to Change)</span>
+                </div>
+              </div>
+              <p className="text-gray-500 font-medium flex items-center justify-center md:justify-start gap-2 mb-4">
+                <MapPin size={16} className="text-orange-500" />
+                {myShopData.city}, {myShopData.state}
+              </p>
+              <div className="flex items-center justify-center md:justify-start gap-4">
+                <div className="text-center md:text-left">
+                  <p className="text-xs text-gray-400 font-bold uppercase">Items</p>
+                  <p className="text-lg font-bold text-gray-900">{myShopData.items.length}</p>
+                </div>
+                <div className="w-px h-8 bg-gray-200"></div>
+                <div className="text-center md:text-left">
+                  <p className="text-xs text-gray-400 font-bold uppercase">Rating</p>
+                  <div className="flex items-center gap-1">
+                    <span className="text-lg font-bold text-gray-900">{stats.rating}</span>
+                    <Star size={14} className="text-yellow-400 fill-yellow-400" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 w-full md:w-auto">
+              <button
+                onClick={() => navigate("/partner/orders")}
+                className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-xl font-bold shadow-lg shadow-orange-200 hover:shadow-xl hover:translate-y-[-2px] transition-all flex items-center justify-center gap-2"
+              >
+                <ShoppingBag size={18} /> View Orders
+              </button>
+              <button
+                onClick={() => navigate("/partner/add-items")}
+                className="flex-1 px-6 py-3 bg-gray-900 text-white rounded-xl font-bold shadow-lg hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
+              >
+                <Plus size={18} /> Add Item
               </button>
             </div>
           </div>
 
-          {/* New Item Action Bar */}
-          <div className="flex items-center justify-between mb-8">
+          {/* 2. Key Metrics Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <StatCard
+              icon={DollarSign}
+              label="Total Revenue"
+              value={`₹${stats.revenue}`}
+              color="text-green-600"
+              subText="+12% this week"
+            />
+            <StatCard
+              icon={DollarSign}
+              label="COD Revenue"
+              value={`₹${stats.codRevenue || 0}`}
+              color="text-pink-600"
+              subText="Cash to Collect"
+            />
+
+            <StatCard
+              icon={ShoppingBag}
+              label="Total Orders"
+              value={stats.totalOrders}
+              color="text-blue-600"
+              subText={`${stats.pendingOrders} Active Now`}
+            />
+            <StatCard
+              icon={Utensils}
+              label="Menu Items"
+              value={myShopData.items.length}
+              color="text-orange-600"
+              subText="In different categories"
+            />
+          </div>
+
+       
+
+          {/* 3. Menu Management Section */}
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-              <span className="w-2 h-8 bg-orange-500 rounded-full"></span>
-              Menu Items
+              Menu Management
             </h2>
-            <button
-              className="
-                  px-6 py-3
-                  font-bold text-sm text-white bg-black rounded-xl shadow-lg 
-                  hover:bg-orange-600 transition-all duration-300
-                  active:scale-95 flex items-center gap-2"
-              onClick={() => navigate("/partner/add-items")}
-            >
-              <Plus size={18} /> Add New Item
-            </button>
+           
           </div>
 
           {/* //! Empty State - No Items */}
           {myShopData.items.length === 0 && (
             <div className="w-full flex justify-center py-10">
-              <div className="w-full bg-gray-50 border border-dashed border-gray-300 rounded-[2rem] p-12 text-center hover:bg-white hover:border-orange-300 hover:shadow-xl transition-all duration-300 group cursor-pointer"
+              <div className="w-full bg-white border border-dashed border-gray-300 rounded-[2rem] p-12 text-center hover:border-orange-300 hover:shadow-xl transition-all duration-300 group cursor-pointer"
                 onClick={() => navigate("/partner/add-items")}
               >
-                <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-gray-300 mx-auto mb-6 shadow-sm group-hover:text-orange-500 group-hover:scale-110 transition-all">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mx-auto mb-6 shadow-sm group-hover:text-orange-500 group-hover:scale-110 transition-all">
                   <Utensils size={32} />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Build Your Menu</h3>
@@ -141,9 +275,9 @@ const OwnerDashboard = () => {
 
           {/* //! Items Grid */}
           {myShopData.items.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
               {myShopData.items.map((items, index) => (
-                <div key={index} className="transform transition-all hover:scale-[1.02]">
+                <div key={index} className="transform transition-all hover:translate-y-[-4px]">
                   <OwnerItemCard data={items} />
                 </div>
               ))}
@@ -156,3 +290,5 @@ const OwnerDashboard = () => {
 };
 
 export default OwnerDashboard;
+
+// No extra export

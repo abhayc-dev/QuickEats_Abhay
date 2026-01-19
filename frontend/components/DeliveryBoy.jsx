@@ -8,7 +8,7 @@ import axios from "axios";
 import { serverUrl } from "../src/config";
 import DeliveryAssignmentCard from "../src/pages/DeliveryAssignmentsCard";
 import DeliveryBoyTracking from "./DeliveryBoyTracking";
-import { MapPin, Wallet, Package, Phone, CheckCircle } from "lucide-react";
+import { MapPin, Wallet, Package, Phone, CheckCircle, X } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -31,6 +31,7 @@ const DeliveryBoy = () => {
   const [todaysDeliveries, setTodaysDeliveries] = useState([]);
   const [loader, setLoader] = useState(false);
   const [message, setMessage] = useState("");
+  const [newOrderModal, setNewOrderModal] = useState(null); // Modal State
 
   //! socket io for location of the deliveryBoy fetch without refresh on the user side (is ko listen karenge socket.js me)
   useEffect(() => {
@@ -205,6 +206,7 @@ const DeliveryBoy = () => {
     socket?.on("newAssignment", (data) => {
       if (data.sendTo == userData._id) {
         setAvailableAssignments((prev) => [...prev, data]);
+        setNewOrderModal(data); // Show Modal
       }
     });
 
@@ -226,8 +228,8 @@ const DeliveryBoy = () => {
       <div className="max-w-2xl mx-auto px-4 pt-6 flex flex-col items-center">
 
         {/* //! Header Card */}
-        <div className="w-full bg-[#111] text-white rounded-[2rem] p-6 shadow-2xl relative overflow-hidden mb-8 group">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600 rounded-full blur-[100px] opacity-20 group-hover:opacity-30 transition-opacity duration-500"></div>
+        <div className="w-full bg-[#111] text-white rounded-[2rem] p-6 shadow-2xl relative overflow-hidden mb-8 group mt-20">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600 rounded-full blur-[100px] opacity-20 group-hover:opacity-30 transition-opacity duration-500 "></div>
 
           <div className="relative z-10">
             <h1 className="text-3xl font-bold mb-2">
@@ -465,6 +467,98 @@ const DeliveryBoy = () => {
         )}
 
       </div>
+
+      {/* //! NEW ORDER POPUP MODAL */}
+      {
+        newOrderModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden relative animate-in zoom-in-95 duration-300 border border-white/20">
+
+              {/* Header */}
+              <div className="bg-[#ff4d2d] p-6 text-white text-center relative">
+                <button
+                  onClick={() => setNewOrderModal(null)}
+                  className="absolute top-4 right-4 p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 text-4xl shadow-inner">
+                  🛵
+                </div>
+                <h2 className="text-2xl font-black tracking-tight">New Request!</h2>
+                <p className="text-orange-100 text-sm font-medium opacity-90">Grab it before it's gone</p>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-lg font-bold text-gray-900 border border-orange-100">
+                    {newOrderModal.shopName?.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900">{newOrderModal.shopName}</h3>
+                    <p className="text-xs text-gray-500">Restaurant</p>
+                  </div>
+                </div>
+
+                <div className="my-4 space-y-3">
+                  <div className="flex gap-3 items-start p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <MapPin size={18} className="text-orange-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-gray-400 uppercase mb-0.5">Deliver To</p>
+                      <p className="text-gray-700 text-sm font-medium line-clamp-2 leading-snug">
+                        {newOrderModal.deliveryAddress?.text}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center px-2">
+                    <div className="text-center">
+                      <p className="text-xs text-gray-400 font-bold uppercase">Items</p>
+                      <p className="font-black text-gray-900 text-lg">{newOrderModal.items?.length || 1}</p>
+                    </div>
+                    <div className="w-px h-8 bg-gray-200"></div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-400 font-bold uppercase">Total Bill</p>
+                      <p className="font-black text-gray-900 text-lg">₹{newOrderModal.subtotal}</p>
+                    </div>
+                    <div className="w-px h-8 bg-gray-200"></div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-400 font-bold uppercase">Payment</p>
+                      <p className="font-bold text-gray-900 text-sm bg-green-100 text-green-700 px-2 py-0.5 rounded-md uppercase">
+                        {newOrderModal.paymentMethod}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      rejectOrder(newOrderModal.assignmentId);
+                      setNewOrderModal(null);
+                    }}
+                    className="flex-1 py-3.5 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 active:scale-95 transition-all cursor-pointer"
+                  >
+                    Reject
+                  </button>
+                  <button
+                    onClick={() => {
+                      acceptOrder(newOrderModal.assignmentId);
+                      setNewOrderModal(null);
+                    }}
+                    className="flex-1 py-3.5 bg-[#111] text-white font-bold rounded-xl shadow-lg shadow-orange-200 hover:bg-orange-600 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    Accept Now
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )
+      }
     </div>
   );
 };

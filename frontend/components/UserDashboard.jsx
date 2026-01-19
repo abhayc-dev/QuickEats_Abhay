@@ -109,7 +109,7 @@ const UserDashboard = () => {
   }, [shopsInMyCity]);
 
   return (
-    <div className="w-full min-h-screen flex flex-col items-center bg-gradient-to-br from-orange-50 via-white to-yellow-50">
+    <div className="w-full min-h-screen flex flex-col items-center bg-gradient-to-br from-orange-50 via-white to-yellow-50 mt-[-28px]">
       <Nav />
       {/* Hero Section - Hide if searching */}
       {(!searchItems || searchItems.length === 0) && (
@@ -149,11 +149,17 @@ const UserDashboard = () => {
 
           {/* //! Results Grid */}
           <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {searchItems.map((item) => (
-              <div key={item._id} className="transform hover:-translate-y-1 transition-transform duration-300">
-                <FoodCard data={item} />
-              </div>
-            ))}
+            {searchItems.map((item) => {
+              const shopFromStore = shopsInMyCity?.find(s => s._id === (item.shop?._id || item.shop));
+              return (
+                <div key={item._id} className="transform hover:-translate-y-1 transition-transform duration-300">
+                  <FoodCard
+                    data={item}
+                    shopOpen={shopFromStore ? shopFromStore.isOpen : item.shop?.isOpen}
+                  />
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -162,7 +168,7 @@ const UserDashboard = () => {
       <div className="w-full max-w-6xl flex flex-col gap-6 items-start p-4">
         <div className="flex items-center gap-3">
           <span className="text-3xl flex items-center justify-center w-12 h-12 bg-white rounded-full shadow-sm text-center pt-1">🍴</span>
-          <h1 className="text-gray-900 text-2xl sm:text-3xl font-black tracking-tight relative">
+          <h1 className="text-gray-900 md:text-2xl sm:text-3xl font-black tracking-tight relative">
             Inspiration for Your <span className="text-orange-600">First Order</span>
             <span className="absolute -bottom-2 left-0 w-1/3 h-1 bg-gradient-to-r from-orange-400 to-transparent rounded-full"></span>
           </h1>
@@ -238,6 +244,7 @@ const UserDashboard = () => {
                 <CategoryCard
                   name={shop.name}
                   image={shop.image}
+                  isOpen={shop.isOpen} // Pass open status
                   key={shop._id || index}
                   onClick={() => navigate(`/shop/${shop._id}`)}
                 />
@@ -286,9 +293,16 @@ const UserDashboard = () => {
               </div>
             ))
           ) : filteredItems && filteredItems.length > 0 ? (
-            filteredItems.map((items, index) => (
-              <FoodCard data={items} key={index} />
-            ))
+            filteredItems.map((item, index) => {
+              const shopFromStore = shopsInMyCity?.find(s => s._id === (item.shop?._id || item.shop));
+              return (
+                <FoodCard
+                  key={item._id || index}
+                  data={item}
+                  shopOpen={shopFromStore ? shopFromStore.isOpen : item.shop?.isOpen}
+                />
+              );
+            })
           ) : (
             <p className="text-gray-500">No items found</p>
           )}

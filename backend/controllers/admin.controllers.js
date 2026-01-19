@@ -12,8 +12,9 @@ export const getDashboardStats = async (req, res) => {
     const totalItems = await Item.countDocuments();
 
     // Calculate total revenue (assuming 'totalPrice' in Order model)
-    const orders = await Order.find({ status: "Delivered" }); // Only count delivered orders
-    const totalRevenue = orders.reduce((acc, order) => acc + (order.totalPrice || 0), 0);
+    const deliveredOrders = await Order.find({ status: "Delivered" }); // Only count delivered orders
+    
+    const totalRevenue = deliveredOrders.reduce((acc, order) => acc + (order.totalPrice || 0), 0);
 
     return res.status(200).json({
       totalUsers,

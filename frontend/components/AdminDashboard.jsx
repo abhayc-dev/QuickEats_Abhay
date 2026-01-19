@@ -70,7 +70,7 @@ const AdminDashboard = () => {
     }, [activeTab]);
 
     return (
-        <div className="w-full min-h-screen bg-gray-50 flex flex-col">
+        <div className="w-full min-h-screen bg-gray-50 flex flex-col mt-16">
             <Nav />
             <div className="flex-grow w-full max-w-7xl mx-auto px-4 py-8">
                 <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Dashboard</h1>
@@ -161,8 +161,8 @@ const AdminDashboard = () => {
                                             <td className="py-3 px-4 text-gray-600">{user.email}</td>
                                             <td className="py-3 px-4">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' :
-                                                        user.role === 'owner' ? 'bg-orange-100 text-orange-700' :
-                                                            'bg-blue-100 text-blue-700'
+                                                    user.role === 'owner' ? 'bg-orange-100 text-orange-700' :
+                                                        'bg-blue-100 text-blue-700'
                                                     }`}>
                                                     {user.role}
                                                 </span>
@@ -241,8 +241,8 @@ const AdminDashboard = () => {
                                             <td className="py-3 px-4 font-bold text-gray-900">₹{order.totalPrice}</td>
                                             <td className="py-3 px-4">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
-                                                        order.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
-                                                            'bg-yellow-100 text-yellow-700'
+                                                    order.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
+                                                        'bg-yellow-100 text-yellow-700'
                                                     }`}>
                                                     {order.status}
                                                 </span>

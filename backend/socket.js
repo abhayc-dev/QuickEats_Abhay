@@ -7,6 +7,9 @@ export const socketHandler = (io) => {
     // When a user identifies themselves
     socket.on("identity", async ({ userId }) => {
       try {
+        // Join a room with the userId for stable multi-tab messaging
+        socket.join(userId);
+        
         const user = await User.findByIdAndUpdate(
           userId,
           { socketId: socket.id, isOnline: true },

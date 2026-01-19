@@ -33,6 +33,10 @@ const shopSchema = new mongoose.Schema(
         ref: "Item",
       },
     ],
+    isOpen: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

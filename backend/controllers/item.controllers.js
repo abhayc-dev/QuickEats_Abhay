@@ -4,7 +4,7 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 
 export const addItem = async (req, res) => {
   try {
-    const { name, category, foodType, price, discount } = req.body;
+    const { name, category, foodType, price, discount, description } = req.body;
     let image;
     if (req.file) {
       image = await uploadOnCloudinary(req.file.path);
@@ -15,6 +15,7 @@ export const addItem = async (req, res) => {
     }
     const item = await Item.create({
       name,
+      description,
       category,
       foodType,
       price,
@@ -47,7 +48,7 @@ export const addItem = async (req, res) => {
 export const editItem = async (req, res) => {
   try {
     const itemId = req.params.itemId;
-    const { name, category, foodType, price, discount } = req.body;
+    const { name, category, foodType, price, discount, description } = req.body;
     let image;
     if (req.file) {
       image = await uploadOnCloudinary(req.file.path);
@@ -56,6 +57,7 @@ export const editItem = async (req, res) => {
       itemId,
       {
         name,
+        description,
         category,
         foodType,
         price,
@@ -140,7 +142,7 @@ export const getItemsByCity = async (req, res) => {
     }
     const shopIds = shops.map((shop) => shop._id);
 
-    const items = await Item.find({ shop: { $in: shopIds } });
+    const items = await Item.find({ shop: { $in: shopIds } }).populate("shop");
     return res.status(200).json(items);
   } catch (error) {
     return res.status(500).json({ message: `get Item By City error ${error}` });
@@ -183,7 +185,7 @@ export const searchItems = async (req, res) => {
         {name:{$regex:query, $options:"i"}},
         {category:{$regex:query, $options:"i"}}
       ]
-    }).populate("shop", "name image")
+    }).populate("shop", "name image isOpen")
 
     return res.status(200).json(items)
 

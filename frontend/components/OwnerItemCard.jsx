@@ -28,6 +28,11 @@ const OwnerItemCard = ({ data }) => {
     <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group h-full">
       <div className="w-32 sm:w-40 bg-gray-100 relative overflow-hidden">
         <img src={data.image} alt={data.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+        {data.description && (
+          <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/50">
+            <p className="text-white text-xs font-bold">{data.description}</p>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col justify-between p-4 flex-1">

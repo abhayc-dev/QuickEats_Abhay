@@ -83,9 +83,18 @@ const Shop = () => {
           <img
             src={shopDetails.image}
             alt={shopDetails.name}
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover ${!shopDetails.isOpen ? 'grayscale' : ''}`}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end pb-10 items-center text-white text-center">
+          {/* Closed Overlay */}
+          {!shopDetails.isOpen && (
+            <div className="absolute inset-0 bg-black/60 z-10 flex items-center justify-center backdrop-blur-[2px]">
+              <div className="bg-red-600 text-white px-8 py-3 rounded-xl font-black text-3xl border-4 border-white transform -rotate-12 shadow-2xl tracking-widest uppercase">
+                Currently Closed
+              </div>
+            </div>
+          )}
+
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end pb-10 items-center text-white text-center z-20">
             <h1 className="text-4xl md:text-5xl font-extrabold drop-shadow-lg tracking-tight">{shopDetails.name}</h1>
             <p className="flex items-center gap-2 mt-3 text-lg md:text-xl font-medium opacity-90 bg-black/30 px-4 py-1 rounded-full backdrop-blur-sm">
               <MapPin size={18} className="text-yellow-400" /> {shopDetails.address}, {shopDetails.city}, {shopDetails.state}
@@ -102,7 +111,11 @@ const Shop = () => {
           {shopItems?.length > 0 ? (
             <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 mb-5">
               {shopItems.map((item) => (
-                <FoodCard key={item._id} data={{ ...item, shop: shopDetails }} />
+                <FoodCard
+                  key={item._id}
+                  data={{ ...item, shop: shopDetails }}
+                  shopOpen={shopDetails.isOpen} // Pass open status
+                />
               ))}
             </div>
           ) : (

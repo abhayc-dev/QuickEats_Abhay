@@ -1,11 +1,12 @@
-import { Route, Routes, Navigate, Outlet } from "react-router-dom";
+import { Route, Routes, Navigate, Outlet, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, Suspense, lazy } from "react";
 import { io } from "socket.io-client";
-import { setSocket, updateRealtimeStatus, addMyOrder } from "./redux/userSlice";
+import { setSocket, updateRealtimeStatus, addMyOrder, updateShopStatus } from "./redux/userSlice";
 import { serverUrl } from "./config";
+import { Toaster, toast } from 'react-hot-toast';
 
-// Initial Hooks (Keep static)
+// Initial Hooks
 import useGetCurrentUser from "./hooks/useGetCurrentUser";
 import useGetCity from "./hooks/useGetCity";
 import useGetMyShop from "./hooks/useGateMyShop";
@@ -14,9 +15,8 @@ import useGetItemsByCity from "./hooks/useGetItemsByCity";
 import useGetMyOrders from "./hooks/useGetMyOrders";
 import useUpdateLocation from "./hooks/useUpdateLocation";
 
-// Helper Components
 import Footer from "./pages/Footer";
-import { ScaleLoader } from "react-spinners"; // Assuming you have spinners or use a simple div
+import { ScaleLoader } from "react-spinners";
 
 // Lazy Load Pages
 const SignIn = lazy(() => import("./pages/SignIn"));
@@ -46,9 +46,14 @@ const Loader = () => (
   </div>
 );
 
+// 🔊 Web Audio API Context (Singleton)
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let audioCtx = new AudioContext();
+
 function App() {
   const userData = useSelector((state) => state.user.userData);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   useUpdateLocation();
   useGetCurrentUser();
@@ -59,21 +64,129 @@ function App() {
   useGetMyOrders();
 
   useEffect(() => {
+    //  Mobile Audio Unlock: Resume AudioContext on first interaction
+    const unlockAudio = () => {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().then(() => {
+          console.log("AudioContext Resumed/Unlocked 🔓");
+          // Play a silent tiny beep to verify
+          playNotificationSound(0);
+        });
+      }
+      // Remove listeners
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('touchstart', unlockAudio);
+      document.removeEventListener('touchend', unlockAudio);
+      document.removeEventListener('keydown', unlockAudio);
+    };
+
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
+    document.addEventListener('touchend', unlockAudio);
+    document.addEventListener('keydown', unlockAudio);
+
     const socketInstance = io(serverUrl, { withCredentials: true })
     dispatch(setSocket(socketInstance))
     socketInstance.on('connect', () => {
+      console.log("Socket Connected:", socketInstance.id);
       if (userData) {
+        console.log("Emitting Identity for:", userData._id);
         socketInstance.emit('identity', { userId: userData._id })
       }
     })
 
     // owner: receive new order
     socketInstance.on('newOrder', (payload) => {
-      // for owner dashboard, rely on useGetMyOrders to reflect; also add to store if owner is logged in
+      console.log("New Order Incoming!", payload);
       if (userData?.role === 'owner') {
+        console.log("User is Owner, dispatching...");
         dispatch(addMyOrder(payload))
+
+        // 🔔 Play Web Audio Sound (Robust)
+        playNotificationSound();
+
+        // 🍞 Show Custom Toast
+        toast((t) => (
+          <div className="flex flex-col gap-2 min-w-[200px]">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🔔</span>
+              <span className="font-bold text-gray-900">New Order Received!</span>
+            </div>
+            <div className="text-sm text-gray-600">
+              {payload.shopOrders.shopOrderItems.map(i => i.name).join(", ")}
+            </div>
+            <p className="text-xs font-bold text-orange-600 mt-1">
+              Total: ₹{payload.shopOrders.subtotal}
+            </p>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                navigate('/partner/orders');
+              }}
+              className="bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg mt-2 self-start hover:bg-orange-600 transition-colors"
+            >
+              View Order
+            </button>
+          </div>
+        ), {
+          duration: 5000,
+          position: 'top-right',
+          style: {
+            border: '1px solid #fed7aa',
+            padding: '16px',
+            color: '#713200',
+            background: '#fff7ed',
+            borderRadius: '16px'
+          },
+        });
       }
     })
+
+    // delivery boy: receive new assignment
+    socketInstance.on('newAssignment', (payload) => {
+      console.log("New Assignment Incoming!", payload);
+      if (userData?.role === 'deliveryBoy' && payload.sendTo === userData._id) {
+
+        // 🔔 Play Sound
+        playNotificationSound();
+
+        // 🍞 Show Custom Toast
+        toast((t) => (
+          <div className="flex flex-col gap-2 min-w-[200px]">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🛵</span>
+              <span className="font-bold text-gray-900">New Delivery Request!</span>
+            </div>
+            <div className="text-sm text-gray-600">
+              <span className="font-bold">{payload.shopName}</span> wants you to deliver an order.
+            </div>
+            <div className="text-xs text-gray-500 line-clamp-1">
+              📍 {payload.deliveryAddress?.text}
+            </div>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                navigate('/delivery/dashboard');
+              }}
+              className="bg-orange-600 text-white text-xs px-3 py-1.5 rounded-lg mt-2 self-start hover:bg-orange-700 transition-colors shadow-sm"
+            >
+              View & Accept
+            </button>
+          </div>
+        ), {
+          duration: 8000, // Longer duration for drivers
+          position: 'top-center', // Center for attention
+          style: {
+            border: '1px solid #fdba74',
+            padding: '16px',
+            color: '#c2410c',
+            background: '#fff7ed',
+            borderRadius: '16px',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+          },
+        });
+      }
+    });
 
     // user + owner: status updates and delivered event
     const handleStatus = ({ orderId, shopId, status }) => {
@@ -81,11 +194,21 @@ function App() {
     }
     socketInstance.on('update-status', handleStatus)
     socketInstance.on('orderDelivered', handleStatus)
+
+    socketInstance.on("shopStatusUpdate", ({ shopId, isOpen }) => {
+      dispatch(updateShopStatus({ shopId, isOpen }));
+    });
+
     return () => {
       socketInstance.off('newOrder')
       socketInstance.off('update-status', handleStatus)
       socketInstance.off('orderDelivered', handleStatus)
+      socketInstance.off("shopStatusUpdate");
       socketInstance.disconnect()
+
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('touchstart', unlockAudio);
+      document.removeEventListener('keydown', unlockAudio);
     }
   }, [userData?._id])
 
@@ -104,6 +227,7 @@ function App() {
 
   return (
     <Suspense fallback={<Loader />}>
+      <Toaster />
       <Routes>
         {/* ================= USER PORTAL (Root) ================= */}
 
@@ -163,6 +287,55 @@ function App() {
       </Routes>
     </Suspense>
   );
+}
+
+// 🔊 Sound Generator Utility: "Ding-Dong" Chime
+// 🔊 Sound Generator Utility: "Ding-Dong" Chime
+async function playNotificationSound(vol = 1) {
+  try {
+    // Re-init if closed or missing
+    if (!audioCtx || audioCtx.state === 'closed') {
+      audioCtx = new AudioContext();
+    }
+
+    // Resume if suspended (Critical for browsers)
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+
+    const now = audioCtx.currentTime;
+
+    // Helper to play one note
+    const playNote = (freq, startTime, duration) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      // Smooth Attack (Fade in)
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(vol * 0.5, startTime + 0.05);
+
+      // Smooth Decay (Fade out)
+      gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+
+    // Note 1: "Ding" (Higher pitch, E5 approx 659Hz)
+    playNote(660, now, 0.6);
+
+    // Note 2: "Dong" (Lower pitch, C5 approx 523Hz)
+    playNote(523, now + 0.4, 0.8);
+
+  } catch (error) {
+    console.error("Audio Playback Error:", error);
+  }
 }
 
 export default App;

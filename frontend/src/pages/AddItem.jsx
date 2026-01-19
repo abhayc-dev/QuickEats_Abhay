@@ -12,6 +12,7 @@ import { ClipLoader } from "react-spinners";
 const AddItem = () => {
   const navigate = useNavigate();
   const [name, setName] = useState();
+  const [description, setDescription] = useState("");
   const [price, setPrice] = useState(0);
   const [discount, setDiscount] = useState(0);
   const [category, setCategory] = useState("");
@@ -47,6 +48,7 @@ const AddItem = () => {
     try {
       const formData = new FormData();
       formData.append("name", name);
+      formData.append("description", description);
       formData.append("category", category);
       formData.append("foodType", foodType);
       formData.append("price", price);
@@ -117,6 +119,18 @@ const AddItem = () => {
                 onChange={(e) => setName(e.target.value)}
                 value={name}
                 required
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase text-gray-400 tracking-wider ml-1">Description (Optional)</label>
+              <textarea
+                placeholder="e.g. Loaded with extra cheese and fresh herbs..."
+                rows="2"
+                className="w-full px-5 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-orange-500 focus:bg-white outline-none transition-all font-medium text-gray-700 placeholder:font-normal placeholder:text-gray-400 resize-none"
+                onChange={(e) => setDescription(e.target.value)}
+                value={description}
               />
             </div>
 

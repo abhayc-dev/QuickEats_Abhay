@@ -134,3 +134,34 @@ export const getShopByCity = async (req, res) => {
     return res.status(500).json({ message: `get shop By city error ${error}` });
   }
 };
+
+// shop close toggle
+
+export const toggleShopStatus = async (req, res) => {
+  try {
+    const shop = await Shop.findOne({ owner: req.userId });
+    if (!shop) {
+      return res.status(404).json({ message: "Shop not found" });
+    }
+    
+    shop.isOpen = !shop.isOpen;
+    await shop.save();
+
+    // Notify clients (Users) via Socket.IO
+    const io = req.app.get("io");
+    if (io) {
+      // Emit event to all connected clients or specific city room
+      // Since shop update affects city listing and shop page, broadcast to all for simplicity
+      // In production, optimize with rooms: io.to(shop.city)
+      io.emit("shopStatusUpdate", {
+        shopId: shop._id,
+        isOpen: shop.isOpen,
+        city: shop.city
+      });
+    }
+
+    return res.status(200).json({ message: "Status updated", isOpen: shop.isOpen });
+  } catch (error) {
+    return res.status(500).json({ message: `toggle status error: ${error.message}` });
+  }
+};

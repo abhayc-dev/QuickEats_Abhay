@@ -132,9 +132,11 @@ export const placeOrder = async (req, res) => {
     const io = req.app.get("io");
     if (io) {
       newOrder.shopOrders.forEach((shopOrder) => {
-        const ownerSocketId = shopOrder.owner.socketId;
-        if (ownerSocketId) {
-          io.to(ownerSocketId).emit("newOrder", {
+        const ownerId = shopOrder.owner?._id?.toString();
+        // console.log(`[Socket Debug] Owner: ${shopOrder.owner.name}, Room: ${ownerId}`);
+        if (ownerId) {
+          // console.log(`[Socket Debug] Emitting 'newOrder' to Room ${ownerId}`);
+          io.to(ownerId).emit("newOrder", {
             _id: newOrder._id,
             paymentMethod: newOrder.paymentMethod,
             user: newOrder.user,
@@ -144,6 +146,8 @@ export const placeOrder = async (req, res) => {
             status: newOrder.status,
             payment: newOrder.payment,
           });
+        } else {
+             console.log(`[Socket Debug] No socket ID for owner ${shopOrder.owner.name}`);
         }
       });
     }
@@ -192,9 +196,9 @@ export const verifyPayment = async (req, res) => {
     const io = req.app.get("io");
     if (io) {
       order.shopOrders.forEach((shopOrder) => {
-        const ownerSocketId = shopOrder.owner.socketId;
-        if (ownerSocketId) {
-          io.to(ownerSocketId).emit("newOrder", {
+        const ownerId = shopOrder.owner?._id?.toString();
+        if (ownerId) {
+          io.to(ownerId).emit("newOrder", {
             _id: order._id,
             paymentMethod: order.paymentMethod,
             user: order.user,
@@ -236,7 +240,11 @@ export const getMyOrders = async (req, res) => {
         .populate("shopOrders.shop", "name")
         .populate("user")
         .populate("shopOrders.shopOrderItems.item", "name image price")
-        .populate("shopOrders.assignedDeliveryBoy", "fullName mobile");
+        .populate("shopOrders.assignedDeliveryBoy", "fullName mobile")
+        .populate({
+          path: "shopOrders.assignment",
+          populate: { path: "broadcastedTo", select: "fullName mobile" },
+        });
 
       //! filter the order -> Burger king receive only own items
       const filteredOrders = orders.map((order) => ({
@@ -294,13 +302,16 @@ export const updateOrderStatus = async (req, res) => {
         },
       });
 
+      console.log("Searching Delivery Boys near:", latitude, longitude);
+      console.log("Found:", nearByDeliveryBoys.length, "boys:", nearByDeliveryBoys.map(b => b.fullName));
+
       //! to filter the deliveryBoy who is free to takeoff the delivery (not send to who is busy)
       const nearByIds = nearByDeliveryBoys.map((b) => b._id);
       const busyIds = await DeliveryAssignment.find({
         assignedTo: { $in: nearByIds },
         status: { $nin: ["broadcasted", "completed"] },
       }).distinct("assignedTo");
-
+      console.log("Busy IDs:", busyIds);
       const busyIdSet = new Set(busyIds.map((id) => String(id)));
       const availableBoys = nearByDeliveryBoys.filter(
         (b) => !busyIdSet.has(String(b._id))
@@ -349,9 +360,9 @@ export const updateOrderStatus = async (req, res) => {
       const io = req.app.get("io");
       if (io) {
         availableBoys.forEach((boy) => {
-          const boySocketId = boy.socketId;
-          if (boySocketId) {
-            io.to(boySocketId).emit("newAssignment", {
+          const boyId = boy._id.toString();
+          if (boyId) {
+            io.to(boyId).emit("newAssignment", {
               sendTo: boy._id,
               assignmentId: deliveryAssignment._id,
               orderId: deliveryAssignment.order._id,
@@ -396,9 +407,9 @@ export const updateOrderStatus = async (req, res) => {
     //! socket io for update status on user side
     const io = req.app.get("io");
     if (io) {
-      const userSocketId = order.user.socketId;
-      if (userSocketId) {
-        io.to(userSocketId).emit("update-status", {
+      const userId = order.user?._id?.toString();
+      if (userId) {
+        io.to(userId).emit("update-status", {
           orderId: order._id,
           shopId: updatedShopOrder.shop._id,
           status: updatedShopOrder.status,
@@ -534,8 +545,8 @@ export const acceptOrder = async (req, res) => {
     const io = req.app.get("io");
     if (io) {
       // Notify User
-      if (order.user && order.user.socketId) {
-        io.to(order.user.socketId).emit("delivery-partner-assigned", {
+      if (order.user) {
+        io.to(order.user._id.toString()).emit("delivery-partner-assigned", {
           orderId: order._id,
           shopId: updatedShopOrder.shop._id,
           deliveryBoy: {
@@ -547,8 +558,8 @@ export const acceptOrder = async (req, res) => {
 
       // Notify Owner
       const shopOwner = updatedShopOrder.shop?.owner;
-      if (shopOwner && shopOwner.socketId) {
-        io.to(shopOwner.socketId).emit("assignment-accepted", {
+      if (shopOwner) {
+        io.to(shopOwner._id.toString()).emit("assignment-accepted", {
           orderId: order._id,
           shopId: updatedShopOrder.shop._id,
           deliveryBoy: {
@@ -747,9 +758,9 @@ export const verifyDeliveryOtp = async (req, res) => {
     if (io) {
       // notify user
       await order.populate("user", "socketId");
-      const userSocketId = order.user?.socketId;
-      if (userSocketId) {
-        io.to(userSocketId).emit("orderDelivered", {
+      const userId = order.user?._id.toString();
+      if (userId) {
+        io.to(userId).emit("orderDelivered", {
           orderId: order._id,
           shopOrderId: shopOrder._id,
           shopId: shopOrder.shop,
@@ -760,9 +771,9 @@ export const verifyDeliveryOtp = async (req, res) => {
       // notify owner
       await order.populate("shopOrders.owner", "socketId");
       const ownerEntry = order.shopOrders.find((so) => String(so._id) === String(shopOrder._id));
-      const ownerSocketId = ownerEntry?.owner?.socketId;
-      if (ownerSocketId) {
-        io.to(ownerSocketId).emit("orderDelivered", {
+      const ownerId = ownerEntry?.owner?._id?.toString();
+      if (ownerId) {
+        io.to(ownerId).emit("orderDelivered", {
           orderId: order._id,
           shopOrderId: shopOrder._id,
           shopId: shopOrder.shop,

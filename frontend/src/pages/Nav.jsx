@@ -367,26 +367,28 @@ function Nav() {
         {/* //! Owner Actions */}
         {userData?.role === "owner" && (
           <>
-
             <div
               className="relative hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d] cursor-pointer hover:bg-[#ff4d2d]/20 transition"
               onClick={() => navigate("/partner/orders")}
             >
               <LuReceiptSwissFranc size={18} />
-              <span>My Orders</span>
-              <span className="absolute -right-2 -top-2 text-xs font-bold text-white bg-[#ff4d2d] rounded-full px-2 py-0.5 shadow">
-                {myOrders.length}
-              </span>
+              <span>Pending Orders</span>
+              {myOrders.filter(o => ['pending', 'placed', 'preparing', 'out of delivery', 'out for delivery'].includes(o.shopOrders?.status || o.status)).length > 0 && (
+                <span className="absolute -right-2 -top-2 text-xs font-bold text-white bg-[#ff4d2d] rounded-full px-2 py-0.5 shadow">
+                  {myOrders.filter(o => ['pending', 'placed', 'preparing', 'out of delivery', 'out for delivery'].includes(o.shopOrders?.status || o.status)).length}
+                </span>
+              )}
             </div>
             <div
               className="md:hidden flex items-center gap-2 cursor-pointer relative px-3 py-1 font-medium rounded-lg bg-[#ff4d2d]/10 text-[#ff4d2d]"
               onClick={() => navigate("/partner/orders")}
             >
               <LuReceiptSwissFranc size={20} />
-
-              <spam className="absolute -right-2 -top-2 text-xs font-bold text-white bg-[#ff4d2d] rounded-full px-[6px] py-[1.5px]">
-                {myOrders.length}
-              </spam>
+              {myOrders.filter(o => ['pending', 'placed', 'preparing', 'out of delivery', 'out for delivery'].includes(o.shopOrders?.status || o.status)).length > 0 && (
+                <spam className="absolute -right-2 -top-2 text-xs font-bold text-white bg-[#ff4d2d] rounded-full px-[6px] py-[1.5px]">
+                  {myOrders.filter(o => ['pending', 'placed', 'preparing', 'out of delivery', 'out for delivery'].includes(o.shopOrders?.status || o.status)).length}
+                </spam>
+              )}
             </div>
           </>
         )}
