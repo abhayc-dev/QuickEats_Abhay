@@ -5,6 +5,19 @@ import { io } from "socket.io-client";
 import { setSocket, updateRealtimeStatus, addMyOrder, updateShopStatus } from "./redux/userSlice";
 import { serverUrl } from "./config";
 import { Toaster, toast } from 'react-hot-toast';
+import axios from "axios";
+
+// 🌍 Global Axios Interceptor for Token Auth (Fallback)
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Initial Hooks
 import useGetCurrentUser from "./hooks/useGetCurrentUser";

@@ -38,6 +38,7 @@ const SignUp = ({ forcedRole }) => {
         },
         { withCredentials: true }
       );
+      if (result.data.token) localStorage.setItem("token", result.data.token);
       dispatch(setUserData(result.data));
       setErr("");
       setLoading(false);
@@ -65,6 +66,7 @@ const SignUp = ({ forcedRole }) => {
         },
         { withCredentials: true }
       );
+      if (data.token) localStorage.setItem("token", data.token);
       dispatch(setUserData(data));
       setErr("");
     } catch (error) {

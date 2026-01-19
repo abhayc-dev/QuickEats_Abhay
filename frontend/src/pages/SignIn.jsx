@@ -35,6 +35,7 @@ const SignIn = ({ forcedRole }) => {
         },
         { withCredentials: true }
       );
+      localStorage.setItem("token", result.data.token);
       dispatch(setUserData(result.data));
       setErr("");
       setLoading(false);
@@ -61,6 +62,7 @@ const SignIn = ({ forcedRole }) => {
         },
         { withCredentials: true }
       );
+      if (data.token) localStorage.setItem("token", data.token);
       dispatch(setUserData(data));
       setErr("");
       const params = new URLSearchParams(location.search);
