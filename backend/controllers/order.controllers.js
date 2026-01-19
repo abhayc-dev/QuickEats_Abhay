@@ -716,7 +716,10 @@ export const sendDeliveryOtp = async (req, res) => {
     await sendOtpToDelivery(order.user, otp);
     return res
       .status(200)
-      .json({ message: `OTP sent to customer name ${order?.user?.fullName}` });
+      .json({ 
+          message: `OTP sent to ${order?.user?.fullName}`,
+          email: order?.user?.email 
+      });
   } catch (error) {
     return res
       .status(500)

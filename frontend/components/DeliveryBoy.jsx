@@ -107,6 +107,7 @@ const DeliveryBoy = () => {
       );
       setLoader(false);
       setShowOtpButton(true);
+      toast.success(`OTP sent to ${result.data.email}`);
       console.log("otp", result.data);
     } catch (error) {
       console.log(error);

@@ -14,21 +14,37 @@ const transporter = nodemailer.createTransport({
 });
 
 
+// Helper to get formatted sender
+const getSender = () => `Quick Eats <${process.env.EMAIL}>`;
+
 export const sendOtpMail = async(to,otp) => {
+    console.log(`[Mail] Sending Reset OTP to: ${to}`);
     await transporter.sendMail({
-        from:process.env.EMAIL,
+        from: getSender(),
         to,
         subject:"Reset Your Password",
-        html:`<p>Your OTP for password reset is <b>${otp}</b>. It expire in 5 minutes.</p>`
+        html:`<div style="font-family: sans-serif; padding: 20px;">
+          <h2>Password Reset</h2>
+          <p>Your OTP is: <b style="font-size: 24px; color: #ea580c;">${otp}</b></p>
+          <p>Expires in 5 minutes.</p>
+        </div>`
     })
 }
 
 //! New function to send delivery OTP
 export const sendOtpToDelivery = async(user,otp) => {
+    console.log(`[Mail] Sending Delivery OTP to: ${user.email}`);
     await transporter.sendMail({
-        from:process.env.EMAIL,
+        from: getSender(),
         to:user.email,
-        subject:"Delivery OTP",
-        html:`<p>Your OTP for Delivery is <b>${otp}</b>. It expire in 5 minutes.</p>`
+        subject:"Delivery Verification",
+        html:`<div style="font-family: sans-serif; padding: 20px;">
+          <h2>Delivery Verification</h2>
+          <p>Share this PIN with the delivery partner:</p>
+          <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #ea580c; margin: 20px 0;">
+            ${otp}
+          </div>
+          <p>Valid for 5 minutes.</p>
+        </div>`
     })
 }
