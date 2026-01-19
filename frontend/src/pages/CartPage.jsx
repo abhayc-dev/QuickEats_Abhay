@@ -70,7 +70,9 @@ const CartPage = () => {
                 </div>
                 <div className="flex justify-between text-gray-500">
                   <span>Delivery Fee</span>
-                  <span className="font-medium text-green-600">Free</span>
+                  <span className={`font-medium ${totalAmount > 500 ? "text-green-600" : "text-gray-900"}`}>
+                    {totalAmount > 500 ? "Free" : "₹40"}
+                  </span>
                 </div>
                 <div className="flex justify-between text-gray-500">
                   <span>Taxes (5%)</span>
@@ -81,7 +83,9 @@ const CartPage = () => {
               <div className="border-t border-dashed border-gray-200 my-4 pt-4">
                 <div className="flex justify-between items-end mb-1">
                   <span className="text-gray-900 font-bold text-lg">Total</span>
-                  <span className="text-3xl font-black text-gray-900 tracking-tight">₹{Math.floor(totalAmount * 1.05)}</span>
+                  <span className="text-3xl font-black text-gray-900 tracking-tight">
+                    ₹{Math.floor(totalAmount * 1.05 + (totalAmount > 500 ? 0 : 40))}
+                  </span>
                 </div>
                 <p className="text-xs text-gray-400 text-right">Including all taxes</p>
               </div>

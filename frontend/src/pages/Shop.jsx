@@ -95,7 +95,7 @@ const Shop = () => {
 
         {/* //! Menu Section */}
         <div className="max-w-7xl mx-auto px-4 py-10 flex justify-center flex-col items-center">
-          <h1 className="text-4xl font-extrabold mb-10 text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-yellow-600 drop-shadow-sm">
+          <h1 className="text-4xl font-extrabold mb-10 text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-yellow-600 drop-shadow-sm text-center">
             🍴 Inspiration for Your First Order
           </h1>
 

@@ -35,6 +35,12 @@ const itemSchema = new mongoose.Schema(
         min: 0,
         required: true
     },
+    discount: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100
+    },
     foodType: {
         type: String,
         enum: ["veg", "non-veg"],

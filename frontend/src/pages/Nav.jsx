@@ -370,7 +370,7 @@ function Nav() {
 
             <div
               className="relative hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d] cursor-pointer hover:bg-[#ff4d2d]/20 transition"
-              onClick={() => navigate("/my-orders")}
+              onClick={() => navigate("/partner/orders")}
             >
               <LuReceiptSwissFranc size={18} />
               <span>My Orders</span>
@@ -380,7 +380,7 @@ function Nav() {
             </div>
             <div
               className="md:hidden flex items-center gap-2 cursor-pointer relative px-3 py-1 font-medium rounded-lg bg-[#ff4d2d]/10 text-[#ff4d2d]"
-              onClick={() => navigate("/my-orders")}
+              onClick={() => navigate("/partner/orders")}
             >
               <LuReceiptSwissFranc size={20} />
 
@@ -418,7 +418,7 @@ function Nav() {
         ) : (
           <button
             className="px-3 py-1.5 rounded-lg bg-[#ff4d2d] text-white text-sm font-semibold"
-            onClick={() => navigate("/signin/user")}
+            onClick={() => navigate("/signin")}
           >
             Sign In
           </button>

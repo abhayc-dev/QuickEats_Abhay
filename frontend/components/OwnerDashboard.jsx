@@ -36,7 +36,7 @@ const OwnerDashboard = () => {
   }, [myShopData, dispatch]);
 
   return (
-    <div className="w-full min-h-screen bg-[#FDFDFD] pb-20">
+    <div className="w-full min-h-screen bg-[#FDFDFD] pb-20 mt-20">
       <Nav />
 
       {!myShopData ? (
@@ -62,7 +62,7 @@ const OwnerDashboard = () => {
                   hover:bg-orange-600 hover:shadow-orange-200
                   transform transition-all duration-300 ease-out 
                   active:scale-95 flex items-center justify-center gap-2"
-                onClick={() => navigate("/create-edit-shop")}
+                onClick={() => navigate("/partner/create-edit-shop")}
               >
                 Get Started <Plus size={20} />
               </button>
@@ -96,7 +96,7 @@ const OwnerDashboard = () => {
               </div>
 
               <button
-                onClick={() => navigate("/create-edit-shop")}
+                onClick={() => navigate("/partner/create-edit-shop")}
                 className="bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white text-white hover:text-black p-4 rounded-full transition-all shadow-lg hover:rotate-12"
                 title="Edit Shop Details"
               >
@@ -117,7 +117,7 @@ const OwnerDashboard = () => {
                   font-bold text-sm text-white bg-black rounded-xl shadow-lg 
                   hover:bg-orange-600 transition-all duration-300
                   active:scale-95 flex items-center gap-2"
-              onClick={() => navigate("/add-items")}
+              onClick={() => navigate("/partner/add-items")}
             >
               <Plus size={18} /> Add New Item
             </button>
@@ -127,7 +127,7 @@ const OwnerDashboard = () => {
           {myShopData.items.length === 0 && (
             <div className="w-full flex justify-center py-10">
               <div className="w-full bg-gray-50 border border-dashed border-gray-300 rounded-[2rem] p-12 text-center hover:bg-white hover:border-orange-300 hover:shadow-xl transition-all duration-300 group cursor-pointer"
-                onClick={() => navigate("/add-items")}
+                onClick={() => navigate("/partner/add-items")}
               >
                 <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-gray-300 mx-auto mb-6 shadow-sm group-hover:text-orange-500 group-hover:scale-110 transition-all">
                   <Utensils size={32} />

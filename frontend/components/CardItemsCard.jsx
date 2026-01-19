@@ -39,11 +39,20 @@ const CardItemsCard = ({ data }) => {
         <div className="flex flex-col gap-1">
           <h3 className="font-bold text-gray-800 text-lg leading-tight">{data.name}</h3>
           <p className="text-sm text-gray-400 font-medium">
-            Single Price: <span className="text-gray-600">₹{data.price}</span>
+            Single Price:{" "}
+            <span className="text-gray-600">₹{data.price}</span>
+            {data.originalPrice && data.originalPrice > data.price && (
+              <span className="text-xs text-gray-400 line-through ml-2">₹{data.originalPrice}</span>
+            )}
           </p>
-          <p className="font-bold text-orange-600 text-lg mt-1">
-            ₹{data.price * data.quantity}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="font-bold text-orange-600 text-lg mt-1">
+              ₹{data.price * data.quantity}
+            </p>
+            {data.discount > 0 && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold mt-1">
+              {data.discount}% Saved
+            </span>}
+          </div>
         </div>
       </div>
 

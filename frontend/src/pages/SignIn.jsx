@@ -11,14 +11,14 @@ import { setUserData } from "../redux/userSlice";
 import { useDispatch } from "react-redux";
 import SEO from "../components/SEO";
 
-const SignIn = () => {
+const SignIn = ({ forcedRole }) => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const { role: routeRole } = useParams();
   const location = useLocation();
-  const [role, setRole] = useState(routeRole || "user");
+  const [role, setRole] = useState(forcedRole || routeRole || "user");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
@@ -102,21 +102,31 @@ const SignIn = () => {
             </p>
           </div>
 
-          {/* Role Toggle */}
-          <div className="bg-gray-100 p-1.5 rounded-2xl flex relative mb-8">
-            {roles.map((r) => (
-              <button
-                key={r.key}
-                onClick={() => setRole(r.key)}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all duration-300 relative z-10 ${role === r.key
+          {/* Role Toggle - Only show if role isn't forced */}
+          {!forcedRole && (
+            <div className="bg-gray-100 p-1.5 rounded-2xl flex relative mb-8">
+              {roles.map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => setRole(r.key)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all duration-300 relative z-10 ${role === r.key
                     ? "bg-white text-orange-600 shadow-sm"
                     : "text-gray-400 hover:text-gray-600"
-                  }`}
-              >
-                {r.icon} {r.label}
-              </button>
-            ))}
-          </div>
+                    }`}
+                >
+                  {r.icon} {r.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {forcedRole && (
+            <div className="text-center mb-6">
+              <span className="px-4 py-2 bg-orange-50 text-orange-600 rounded-full text-sm font-bold capitalize">
+                {role === 'deliveryBoy' ? 'Delivery Partner' : role === 'owner' ? 'Restaurant Partner' : role} Login
+              </span>
+            </div>
+          )}
 
           {/* Form */}
           <div className="space-y-5">
@@ -207,7 +217,11 @@ const SignIn = () => {
             <p className="text-center text-gray-500 font-medium mt-6">
               Don't have an account?{" "}
               <button
-                onClick={() => navigate("/signup")}
+                onClick={() => {
+                  if (role === 'owner') navigate("/partner/join");
+                  else if (role === 'deliveryBoy') navigate("/delivery/join");
+                  else navigate("/signup");
+                }}
                 className="text-orange-500 font-bold hover:underline"
               >
                 Sign Up

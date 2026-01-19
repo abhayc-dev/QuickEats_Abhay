@@ -161,8 +161,8 @@ const UserOrderCard = ({ data }) => {
                           <button
                             key={star}
                             className={`text-lg transition-transform hover:scale-110 focus:outline-none cursor-pointer p-0.5 ${(selectedRating[itemId] || 0) >= star
-                                ? "text-yellow-400"
-                                : "text-gray-200 hover:text-yellow-300"
+                              ? "text-yellow-400"
+                              : "text-gray-200 hover:text-yellow-300"
                               }`}
                             onClick={(e) => {
                               e.stopPropagation(); // Prevent card clicks if any
@@ -211,6 +211,39 @@ const UserOrderCard = ({ data }) => {
             </div>
           </div>
         ))}
+
+        {/* Order Summary Breakdown */}
+        <div className="mt-6 pt-4 border-t border-gray-100 bg-gray-50/50 rounded-2xl p-4">
+          {(() => {
+            const rawTotal = data.shopOrders.reduce((acc, curr) => acc + curr.subtotal, 0);
+            const deliveryFee = rawTotal > 500 ? 0 : 40;
+            const tax = rawTotal * 0.05;
+
+            return (
+              <>
+                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <span>Item Total</span>
+                  <span>₹{rawTotal}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <span>Delivery Fee</span>
+                  <span className={deliveryFee === 0 ? "text-green-600" : ""}>
+                    {deliveryFee === 0 ? "Free" : `₹${deliveryFee}`}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500 mb-2">
+                  <span>Taxes (5%)</span>
+                  <span>₹{tax.toFixed(0)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-bold text-gray-900 border-t border-gray-200 pt-2">
+                  <span>Paid Amount</span>
+                  <span>₹{data.totalAmount}</span>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+
       </div>
 
       {/* Mobile Footer for Total & Track */}

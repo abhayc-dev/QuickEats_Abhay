@@ -34,8 +34,8 @@ const OwnerItemCard = ({ data }) => {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${data.foodType === 'Veg' || data.foodType === 'veg'
-                ? 'bg-green-50 text-green-700 border-green-100'
-                : 'bg-red-50 text-red-700 border-red-100'
+              ? 'bg-green-50 text-green-700 border-green-100'
+              : 'bg-red-50 text-red-700 border-red-100'
               }`}>
               {data.foodType}
             </span>
@@ -47,12 +47,24 @@ const OwnerItemCard = ({ data }) => {
           <h2 className="text-lg font-bold text-gray-900 group-hover:text-orange-600 transition-colors line-clamp-1">
             {data.name}
           </h2>
-          <div className="text-xl font-black text-gray-900 mt-1">₹{data.price}</div>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xl font-black text-gray-900">
+              ₹{data.discount > 0 ? Math.round(data.price - (data.price * data.discount / 100)) : data.price}
+            </span>
+            {data.discount > 0 && (
+              <>
+                <span className="text-xs text-gray-400 line-through font-medium">₹{data.price}</span>
+                <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-md border border-green-100">
+                  {data.discount}% OFF
+                </span>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2 mt-4">
           <button
-            onClick={() => navigate(`/edit-items/${data._id}`)}
+            onClick={() => navigate(`/partner/edit-items/${data._id}`)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-700 bg-gray-50 rounded-lg hover:bg-black hover:text-white transition-all border border-gray-100"
           >
             <Edit2 size={14} /> Edit

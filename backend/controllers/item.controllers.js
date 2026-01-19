@@ -4,7 +4,7 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 
 export const addItem = async (req, res) => {
   try {
-    const { name, category, foodType, price } = req.body;
+    const { name, category, foodType, price, discount } = req.body;
     let image;
     if (req.file) {
       image = await uploadOnCloudinary(req.file.path);
@@ -18,6 +18,7 @@ export const addItem = async (req, res) => {
       category,
       foodType,
       price,
+      discount: discount || 0,
       image,
       shop: shop._id,
     });
@@ -46,7 +47,7 @@ export const addItem = async (req, res) => {
 export const editItem = async (req, res) => {
   try {
     const itemId = req.params.itemId;
-    const { name, category, foodType, price } = req.body;
+    const { name, category, foodType, price, discount } = req.body;
     let image;
     if (req.file) {
       image = await uploadOnCloudinary(req.file.path);
@@ -58,6 +59,7 @@ export const editItem = async (req, res) => {
         category,
         foodType,
         price,
+        discount,
         image,
       },
       { new: true }

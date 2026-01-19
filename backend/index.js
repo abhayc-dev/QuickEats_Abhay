@@ -14,6 +14,8 @@ import { Server } from "socket.io";
 import { socketHandler } from "./socket.js";
 import contactRouter from "./routers/contact.js";
 import reviewRouter from "./routers/review.route.js";
+import adminRouter from "./routers/admin.routes.js";
+import seedAdmin from "./utils/seedAdmin.js";
 
 const app = express();
 app.set("trust proxy", 1); // Trust first proxy (Render/Heroku)
@@ -52,6 +54,7 @@ app.use("/api/item", itemRouter);
 app.use("/api/order", orderRouter);
 app.use("/api/contact", contactRouter);
 app.use("/api/review", reviewRouter);
+app.use("/api/admin", adminRouter);
 
 // ✅ Socket.IO handler
 socketHandler(io);
@@ -59,5 +62,6 @@ socketHandler(io);
 // ✅  server.listen
 server.listen(port, () => {
   connectDb();
+  seedAdmin();
   console.log(`🚀 Server started on http://localhost:${port}`);
 });

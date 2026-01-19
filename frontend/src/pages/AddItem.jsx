@@ -13,6 +13,7 @@ const AddItem = () => {
   const navigate = useNavigate();
   const [name, setName] = useState();
   const [price, setPrice] = useState(0);
+  const [discount, setDiscount] = useState(0);
   const [category, setCategory] = useState("");
   const [foodType, setFoodType] = useState("Veg");
 
@@ -49,6 +50,7 @@ const AddItem = () => {
       formData.append("category", category);
       formData.append("foodType", foodType);
       formData.append("price", price);
+      formData.append("discount", discount);
 
       if (backendImage) {
         formData.append("image", backendImage);
@@ -150,18 +152,38 @@ const AddItem = () => {
               </div>
             </div>
 
-            {/* Price */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase text-gray-400 tracking-wider ml-1">Price</label>
-              <div className="relative">
-                <input
-                  type="number"
-                  placeholder="0"
-                  className="w-full px-5 py-4 pl-12 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-orange-500 focus:bg-white outline-none transition-all font-bold text-gray-700"
-                  onChange={(e) => setPrice(e.target.value)}
-                  value={price}
-                />
-                <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            {/* Price & Discount Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Price */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-gray-400 tracking-wider ml-1">Price (₹)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    placeholder="0"
+                    className="w-full px-5 py-4 pl-12 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-orange-500 focus:bg-white outline-none transition-all font-bold text-gray-700"
+                    onChange={(e) => setPrice(e.target.value)}
+                    value={price}
+                  />
+                  <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                </div>
+              </div>
+
+              {/* Discount */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-gray-400 tracking-wider ml-1">Discount (%)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-orange-500 focus:bg-white outline-none transition-all font-bold text-gray-700"
+                    onChange={(e) => setDiscount(e.target.value)}
+                    value={discount}
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">%</div>
+                </div>
               </div>
             </div>
 

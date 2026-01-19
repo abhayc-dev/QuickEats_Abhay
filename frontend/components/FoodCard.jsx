@@ -48,11 +48,17 @@ const FoodCard = ({ data }) => {
 
   //! helper to dispatch add/update; your reducer should accept quantity and update/remove accordingly
   const updateCart = (newQty) => {
+    const discountedPrice = data.discount > 0
+      ? Math.round(data.price - (data.price * data.discount / 100))
+      : data.price;
+
     dispatch(
       addToCart({
         id: data._id,
         name: data.name,
-        price: data.price,
+        price: discountedPrice,
+        originalPrice: data.price,
+        discount: data.discount,
         image: data.image,
         shop: data.shop,
         quantity: newQty,
@@ -80,7 +86,9 @@ const FoodCard = ({ data }) => {
     }
   };
 
-
+  const discountedPrice = data.discount > 0
+    ? Math.round(data.price - (data.price * data.discount / 100))
+    : data.price;
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-lg group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 ease-in-out border border-gray-100">
@@ -101,6 +109,13 @@ const FoodCard = ({ data }) => {
             <PiFishFill className="text-red-500" size={14} />
           )}
         </div>
+
+        {/* //! Discount Badge */}
+        {data.discount > 0 && (
+          <div className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-sm animate-pulse">
+            {data.discount}% OFF
+          </div>
+        )}
 
         {/* //! Gradient overlay with name + short desc */}
         <div className="absolute inset-x-0 bottom-0 pt-10 pb-4 px-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
@@ -125,12 +140,14 @@ const FoodCard = ({ data }) => {
       <div className="p-4 bg-gray-50">
         <div className="flex items-center justify-between">
           <div>
-            <div className="flex items-baseline gap-0.5">
-              <span className="text-orange-600 font-bold text-xl">₹</span>
-              <span className="text-orange-600 font-bold text-xl">{data.price}</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-orange-600 font-bold text-xl">₹{discountedPrice}</span>
+              {data.discount > 0 && (
+                <span className="text-gray-400 font-medium text-xs line-through">₹{data.price}</span>
+              )}
             </div>
             <div className="text-xs text-gray-500 font-medium mt-0.5">
-              Best Served Hot
+              {data.discount > 0 ? <span className="text-green-600 font-bold">You Save ₹{data.price - discountedPrice}</span> : "Best Served Hot"}
             </div>
           </div>
 

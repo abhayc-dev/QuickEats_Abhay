@@ -41,7 +41,8 @@ const CheckOut = () => {
   );
 
   const deliveryFee = totalAmount > 500 ? 0 : 40;
-  const AmountWithDeliveryFee = totalAmount + deliveryFee;
+  const taxAmount = totalAmount * 0.05;
+  const AmountWithDeliveryFee = Math.floor(totalAmount + deliveryFee + taxAmount);
 
   const [addressInput, setAddressInput] = useState("");
 
@@ -136,7 +137,22 @@ const CheckOut = () => {
       // console.log("Shop Cities:", distinctShopCities);
 
       if (checkoutCity && distinctShopCities.length > 0) {
-        const isFar = distinctShopCities.some(shopCity => shopCity.toLowerCase().trim() !== checkoutCity.toLowerCase().trim());
+        // Normalize helper
+        const normalize = (city) => city?.toLowerCase().trim() || "";
+
+        const isFar = distinctShopCities.some(shopCity => {
+          // Compare normalized cities
+          const sCity = normalize(shopCity);
+          const cCity = normalize(checkoutCity);
+
+          // If they match loosely, they are compatible (NOT far)
+          if (sCity === cCity || cCity.includes(sCity) || sCity.includes(cCity)) {
+            return false;
+          }
+
+          // If we reach here, they mismatch
+          return true;
+        });
 
         if (isFar) {
           alert(
@@ -468,6 +484,10 @@ const CheckOut = () => {
                 <span className={`font-medium ${deliveryFee === 0 ? 'text-green-600' : ''}`}>
                   {deliveryFee === 0 ? "Free" : `₹${deliveryFee}`}
                 </span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Taxes (5%)</span>
+                <span className="font-medium">₹{taxAmount.toFixed(0)}</span>
               </div>
               <div className="flex justify-between text-base font-bold text-gray-900 pt-2 border-t border-gray-200/50">
                 <span>To Pay</span>

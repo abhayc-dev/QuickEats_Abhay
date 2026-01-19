@@ -111,10 +111,12 @@ const UserDashboard = () => {
   return (
     <div className="w-full min-h-screen flex flex-col items-center bg-gradient-to-br from-orange-50 via-white to-yellow-50">
       <Nav />
-      {/* Hero Section */}
-      <div className="w-full max-w-6xl px-2">
-        <HeroSection />
-      </div>
+      {/* Hero Section - Hide if searching */}
+      {(!searchItems || searchItems.length === 0) && (
+        <div className="w-full max-w-6xl px-2">
+          <HeroSection />
+        </div>
+      )}
 
       {/* //! Search Results Section */}
       {/* //! Search Results Section */}
