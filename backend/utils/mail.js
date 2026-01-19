@@ -40,17 +40,22 @@ export const sendOtpMail = async(to,otp) => {
 //! New function to send delivery OTP
 export const sendOtpToDelivery = async(user,otp) => {
     console.log(`[Mail] Sending Delivery OTP to: ${user.email}`);
-    await transporter.sendMail({
-        from: getSender(),
-        to:user.email,
-        subject:"Delivery Verification",
-        html:`<div style="font-family: sans-serif; padding: 20px;">
-          <h2>Delivery Verification</h2>
-          <p>Share this PIN with the delivery partner:</p>
-          <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #ea580c; margin: 20px 0;">
-            ${otp}
-          </div>
-          <p>Valid for 5 minutes.</p>
-        </div>`
-    })
+    try {
+      await transporter.sendMail({
+          from: getSender(),
+          to:user.email,
+          subject:"Delivery Verification",
+          html:`<div style="font-family: sans-serif; padding: 20px;">
+            <h2>Delivery Verification</h2>
+            <p>Share this PIN with the delivery partner:</p>
+            <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #ea580c; margin: 20px 0;">
+              ${otp}
+            </div>
+            <p>Valid for 5 minutes.</p>
+          </div>`
+      })
+    } catch (error) {
+       console.error("Nodemailer Send Failed:", error);
+       throw new Error(`Email Send Failed: ${error.message}`);
+    }
 }

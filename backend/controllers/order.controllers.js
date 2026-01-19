@@ -713,6 +713,11 @@ export const sendDeliveryOtp = async (req, res) => {
     shopOrder.deliveryOtp = otp;
     shopOrder.otpExpires = Date.now() + 5 * 60 * 1000;
     await order.save();
+
+    if (!order.user) {
+       return res.status(400).json({ message: "Customer user not found (deleted?)" });
+    }
+
     await sendOtpToDelivery(order.user, otp);
     return res
       .status(200)
