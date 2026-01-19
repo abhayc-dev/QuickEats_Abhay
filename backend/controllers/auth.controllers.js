@@ -5,10 +5,12 @@ import { sendOtpMail } from "../utils/mail.js";
 
 //! Helper function to set cookie properly
 const setAuthCookie = (res, token) => {
+  const isProduction = process.env.NODE_ENV === "production" || process.env.RENDER === "true";
+  
   res.cookie("token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production", // HTTPS only in production
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: isProduction, // HTTPS only in production (required for SameSite=None)
+    sameSite: isProduction ? "none" : "lax", // Cross-site access allowed in prod
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
@@ -63,10 +65,11 @@ export const signIn = async (req, res) => {
 //! ------------------- Sign Out -------------------
 export const signOut = async (req, res) => {
   try {
+    const isProduction = process.env.NODE_ENV === "production" || process.env.RENDER === "true";
     res.clearCookie("token", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
     });
     return res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
