@@ -4,6 +4,10 @@ dotenv.config();
 
 // Create a test account or replace with real credentials.
 // Create a test account or replace with real credentials.
+if (!process.env.EMAIL || !process.env.PASS) {
+  console.error("CRITICAL ERROR: EMAIL or PASS environment variables are missing!");
+}
+
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 587,

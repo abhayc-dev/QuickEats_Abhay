@@ -112,6 +112,7 @@ const DeliveryBoy = () => {
     } catch (error) {
       console.log(error);
       setLoader(false);
+      toast.error(error.response?.data?.message || "Failed to send OTP");
     }
   };
 
