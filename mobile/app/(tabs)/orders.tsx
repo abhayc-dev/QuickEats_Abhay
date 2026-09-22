@@ -2,6 +2,7 @@ import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator } from "
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
+import { useAuthStore } from "../../store/auth";
 import { colors } from "../../lib/theme";
 import type { Order, Shop } from "../../types";
 
@@ -13,10 +14,27 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function Orders() {
+  const user = useAuthStore((s) => s.user);
   const ordersQuery = useQuery({
     queryKey: ["myOrders"],
     queryFn: async () => (await api.get<Order[]>("/order/my-orders")).data,
+    enabled: !!user,
   });
+
+  if (!user) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyEmoji}>🧾</Text>
+        <Text style={styles.emptyTitle}>Sign in to see your orders</Text>
+        <Pressable
+          style={styles.signInButton}
+          onPress={() => router.push("/(auth)/sign-in")}
+        >
+          <Text style={styles.signInButtonText}>Sign In</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   if (ordersQuery.isLoading) {
     return (
@@ -69,8 +87,24 @@ export default function Orders() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, paddingTop: 60 },
   title: { fontSize: 24, fontWeight: "800", color: colors.text, paddingHorizontal: 16 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.bg,
+    paddingHorizontal: 32,
+    gap: 6,
+  },
   emptyText: { fontSize: 15, color: colors.muted },
+  emptyEmoji: { fontSize: 40, marginBottom: 4 },
+  emptyTitle: { fontSize: 17, fontWeight: "700", color: colors.text, marginBottom: 14 },
+  signInButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingHorizontal: 28,
+    paddingVertical: 13,
+  },
+  signInButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   card: {
     flexDirection: "row",
     alignItems: "center",

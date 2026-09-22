@@ -2,10 +2,20 @@ import { View, Text, FlatList, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useCartStore } from "../../store/cart";
+import { useAuthStore } from "../../store/auth";
 import { colors } from "../../lib/theme";
 
 export default function Cart() {
   const cart = useCartStore();
+  const user = useAuthStore((s) => s.user);
+
+  const onCheckout = () => {
+    if (!user) {
+      router.push({ pathname: "/(auth)/sign-in", params: { redirect: "/checkout" } });
+      return;
+    }
+    router.push("/checkout");
+  };
 
   if (cart.items.length === 0) {
     return (
@@ -59,8 +69,10 @@ export default function Cart() {
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValue}>₹{cart.totalAmount()}</Text>
         </View>
-        <Pressable style={styles.checkoutButton} onPress={() => router.push("/checkout")}>
-          <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
+        <Pressable style={styles.checkoutButton} onPress={onCheckout}>
+          <Text style={styles.checkoutButtonText}>
+            {user ? "Proceed to Checkout" : "Sign In to Checkout"}
+          </Text>
         </Pressable>
       </View>
     </View>
