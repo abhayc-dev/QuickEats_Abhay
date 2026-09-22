@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,20 +8,53 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  TextInput,
+  Switch,
 } from "react-native";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
 import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { useLocationStore } from "../../store/location";
+import { useAuthStore } from "../../store/auth";
 import { colors } from "../../lib/theme";
-import type { Shop } from "../../types";
+import type { Item, Shop } from "../../types";
+
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function shopRating(shop: Shop) {
+  const rated = shop.items.filter((i) => i.rating?.count > 0);
+  if (!rated.length) return null;
+  const avg = rated.reduce((sum, i) => sum + i.rating.average, 0) / rated.length;
+  return Math.round(avg * 10) / 10;
+}
+
+function shopCategories(shop: Shop) {
+  const seen = new Set<string>();
+  for (const item of shop.items) {
+    if (item.category) seen.add(item.category);
+    if (seen.size === 2) break;
+  }
+  return Array.from(seen);
+}
 
 export default function Home() {
   const { city, address, setLocation } = useLocationStore();
+  const user = useAuthStore((s) => s.user);
+  const insets = useSafeAreaInsets();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [citySearch, setCitySearch] = useState("");
+  const [search, setSearch] = useState("");
+  const [vegOnly, setVegOnly] = useState(false);
+  const [category, setCategory] = useState("All");
 
   const citiesQuery = useQuery({
     queryKey: ["cities"],
@@ -34,6 +67,56 @@ export default function Home() {
       (await api.get<Shop[]>(`/shop/get-by-city/${encodeURIComponent(city!)}`)).data,
     enabled: !!city,
   });
+
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const shop of shopsQuery.data ?? []) {
+      for (const item of shop.items) set.add(item.category);
+    }
+    return ["All", ...Array.from(set).sort()];
+  }, [shopsQuery.data]);
+
+  const q = search.trim().toLowerCase();
+
+  const itemMatchesFilters = (item: Item) =>
+    (category === "All" || item.category === category) &&
+    (!vegOnly || item.foodType === "veg") &&
+    (!q || item.name.toLowerCase().includes(q));
+
+  const filteredShops = useMemo(() => {
+    const shops = shopsQuery.data ?? [];
+    return shops.filter((shop) => {
+      if (shop.items.some(itemMatchesFilters)) return true;
+      // shop name matches the search, and it has at least one item that
+      // still satisfies the category/veg filters (ignoring the text search)
+      if (q && shop.name.toLowerCase().includes(q)) {
+        return shop.items.some(
+          (i) =>
+            (category === "All" || i.category === category) &&
+            (!vegOnly || i.foodType === "veg")
+        );
+      }
+      return false;
+    });
+  }, [shopsQuery.data, q, category, vegOnly]);
+
+  const filteredItems = useMemo(() => {
+    const shops = shopsQuery.data ?? [];
+    const result: { item: Item; shop: Shop }[] = [];
+    for (const shop of shops) {
+      for (const item of shop.items) {
+        if (itemMatchesFilters(item)) result.push({ item, shop });
+      }
+    }
+    return result;
+  }, [shopsQuery.data, q, category, vegOnly]);
+
+  const filteredCities = useMemo(() => {
+    const cities = citiesQuery.data ?? [];
+    const cq = citySearch.trim().toLowerCase();
+    if (!cq) return cities;
+    return cities.filter((c) => c.toLowerCase().includes(cq));
+  }, [citiesQuery.data, citySearch]);
 
   const useCurrentLocation = async () => {
     setLocating(true);
@@ -74,24 +157,101 @@ export default function Home() {
       latitude: 0,
       longitude: 0,
     });
+    setCitySearch("");
+    setCategory("All");
     setPickerOpen(false);
   };
 
+  const onMicPress = () => {
+    Alert.alert(
+      "Voice search unavailable",
+      "Voice search needs a custom dev build — speech recognition isn't available in the Expo Go preview."
+    );
+  };
+
+  const hasActiveFilters = !!q || category !== "All" || vegOnly;
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerLabel}>Deliver to</Text>
-          <Pressable onPress={() => setPickerOpen(true)}>
-            <Text style={styles.headerCity} numberOfLines={1}>
-              {city ? `${city} ▾` : "Select your city ▾"}
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.headerTop}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.greeting}>
+              {greeting()}{user?.fullName ? `, ${user.fullName.split(" ")[0]}` : ""}
             </Text>
-          </Pressable>
+            <Pressable style={styles.locationRow} onPress={() => setPickerOpen(true)}>
+              <Text style={styles.locationPin}>📍</Text>
+              <Text style={styles.headerCity} numberOfLines={1}>
+                {city ? city : "Select your city"}
+              </Text>
+              <Text style={styles.chevron}>▾</Text>
+            </Pressable>
+          </View>
         </View>
+
+        {!!city && (
+          <>
+            <View style={styles.searchBar}>
+              <Text style={styles.searchIcon}>🔍</Text>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search restaurants or dishes"
+                placeholderTextColor={colors.muted}
+                value={search}
+                onChangeText={setSearch}
+              />
+              <Pressable style={styles.micButton} onPress={onMicPress} hitSlop={8}>
+                <Text style={styles.micIcon}>🎤</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.vegRow}>
+              <View style={styles.vegLabelRow}>
+                <View style={[styles.vegDotOuter, { borderColor: colors.success }]}>
+                  <View style={[styles.vegDotInner, { backgroundColor: colors.success }]} />
+                </View>
+                <Text style={styles.vegLabel}>Veg Mode</Text>
+              </View>
+              <Switch
+                value={vegOnly}
+                onValueChange={setVegOnly}
+                trackColor={{ false: colors.border, true: "#B7E4C7" }}
+                thumbColor={vegOnly ? colors.success : "#fff"}
+              />
+            </View>
+
+            {categories.length > 1 && (
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={categories}
+                keyExtractor={(c) => c}
+                contentContainerStyle={{ gap: 8 }}
+                renderItem={({ item: c }) => (
+                  <Pressable
+                    style={[styles.categoryChip, category === c && styles.categoryChipActive]}
+                    onPress={() => setCategory(c)}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryChipText,
+                        category === c && styles.categoryChipTextActive,
+                      ]}
+                    >
+                      {c}
+                    </Text>
+                  </Pressable>
+                )}
+              />
+            )}
+          </>
+        )}
       </View>
 
       {!city ? (
         <View style={styles.empty}>
+          <Text style={styles.emptyEmoji}>🍔</Text>
+          <Text style={styles.emptyTitle}>Where should we deliver?</Text>
           <Text style={styles.emptyText}>Choose your city to see restaurants near you</Text>
           <Pressable style={styles.primaryButton} onPress={() => setPickerOpen(true)}>
             <Text style={styles.primaryButtonText}>Select City</Text>
@@ -101,19 +261,47 @@ export default function Home() {
         <ActivityIndicator style={{ marginTop: 40 }} size="large" color={colors.primary} />
       ) : shopsQuery.isError || !shopsQuery.data?.length ? (
         <View style={styles.empty}>
+          <Text style={styles.emptyEmoji}>😕</Text>
           <Text style={styles.emptyText}>No restaurants found in {city} yet.</Text>
+        </View>
+      ) : !filteredShops.length && !filteredItems.length ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyEmoji}>🔍</Text>
+          <Text style={styles.emptyText}>Nothing matches your filters.</Text>
         </View>
       ) : (
         <FlatList
-          data={shopsQuery.data}
+          data={filteredShops}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={{ padding: 16, gap: 14 }}
+          contentContainerStyle={{ padding: 16, paddingTop: 4, gap: 14 }}
+          ListHeaderComponent={
+            !!filteredShops.length ? (
+              <Text style={styles.sectionTitle}>
+                {filteredShops.length} restaurant{filteredShops.length === 1 ? "" : "s"}
+                {hasActiveFilters ? " matching" : ` in ${city}`}
+              </Text>
+            ) : null
+          }
           renderItem={({ item }) => <ShopCard shop={item} />}
+          ListFooterComponent={
+            filteredItems.length ? (
+              <View style={{ marginTop: filteredShops.length ? 22 : 0 }}>
+                <Text style={styles.sectionTitle}>
+                  {hasActiveFilters ? "Dishes matching" : "Popular Dishes"} ({filteredItems.length})
+                </Text>
+                <View style={styles.dishGrid}>
+                  {filteredItems.map(({ item, shop }) => (
+                    <DishCard key={`${shop._id}-${item._id}`} item={item} shop={shop} />
+                  ))}
+                </View>
+              </View>
+            ) : null
+          }
         />
       )}
 
       <Modal visible={pickerOpen} animationType="slide" onRequestClose={() => setPickerOpen(false)}>
-        <View style={styles.modal}>
+        <View style={[styles.modal, { paddingTop: insets.top + 20 }]}>
           <Text style={styles.modalTitle}>Choose your city</Text>
 
           <Pressable style={styles.locateButton} onPress={useCurrentLocation} disabled={locating}>
@@ -124,21 +312,36 @@ export default function Home() {
             )}
           </Pressable>
 
+          <TextInput
+            style={styles.citySearchInput}
+            placeholder="Search cities"
+            placeholderTextColor={colors.muted}
+            value={citySearch}
+            onChangeText={setCitySearch}
+          />
+
           {citiesQuery.isLoading ? (
             <ActivityIndicator style={{ marginTop: 20 }} />
           ) : (
             <FlatList
-              data={citiesQuery.data ?? []}
+              data={filteredCities}
               keyExtractor={(c) => c}
               renderItem={({ item }) => (
                 <Pressable style={styles.cityRow} onPress={() => selectCity(item)}>
                   <Text style={styles.cityRowText}>{item}</Text>
+                  {item === city && <Text style={styles.cityRowCheck}>✓</Text>}
                 </Pressable>
               )}
             />
           )}
 
-          <Pressable style={styles.closeButton} onPress={() => setPickerOpen(false)}>
+          <Pressable
+            style={styles.closeButton}
+            onPress={() => {
+              setCitySearch("");
+              setPickerOpen(false);
+            }}
+          >
             <Text style={styles.closeButtonText}>Cancel</Text>
           </Pressable>
         </View>
@@ -148,19 +351,73 @@ export default function Home() {
 }
 
 function ShopCard({ shop }: { shop: Shop }) {
+  const rating = shopRating(shop);
+  const categories = shopCategories(shop);
+
   return (
-    <Pressable style={styles.card} onPress={() => router.push(`/shop/${shop._id}`)}>
-      <Image source={{ uri: shop.image }} style={styles.cardImage} contentFit="cover" />
-      {!shop.isOpen && (
-        <View style={styles.closedBadge}>
-          <Text style={styles.closedBadgeText}>Closed</Text>
-        </View>
-      )}
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      onPress={() => router.push(`/shop/${shop._id}`)}
+    >
+      <View>
+        <Image source={{ uri: shop.image }} style={styles.cardImage} contentFit="cover" />
+        {!shop.isOpen && (
+          <View style={styles.closedOverlay}>
+            <Text style={styles.closedOverlayText}>Currently Closed</Text>
+          </View>
+        )}
+        {rating !== null && (
+          <View style={styles.ratingBadge}>
+            <Text style={styles.ratingBadgeText}>★ {rating}</Text>
+          </View>
+        )}
+      </View>
       <View style={styles.cardBody}>
-        <Text style={styles.cardTitle}>{shop.name}</Text>
-        <Text style={styles.cardSubtitle} numberOfLines={1}>
-          {shop.address}
-        </Text>
+        <Text style={styles.cardTitle} numberOfLines={1}>{shop.name}</Text>
+        {!!categories.length && (
+          <Text style={styles.cardCategories} numberOfLines={1}>
+            {categories.join(" • ")}
+          </Text>
+        )}
+        <View style={styles.cardAddressRow}>
+          <Text style={styles.cardPinIcon}>📍</Text>
+          <Text style={styles.cardSubtitle} numberOfLines={1}>
+            {shop.address}
+          </Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+function DishCard({ item, shop }: { item: Item; shop: Shop }) {
+  const finalPrice = item.discount
+    ? Math.round(item.price - (item.price * item.discount) / 100)
+    : item.price;
+
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.dishCard, pressed && styles.cardPressed]}
+      onPress={() => router.push(`/shop/${shop._id}`)}
+    >
+      <Image source={{ uri: item.image }} style={styles.dishImage} contentFit="cover" />
+      <View style={styles.dishBody}>
+        <View
+          style={[
+            styles.foodTypeDot,
+            { borderColor: item.foodType === "veg" ? colors.success : colors.danger },
+          ]}
+        >
+          <View
+            style={[
+              styles.foodTypeInner,
+              { backgroundColor: item.foodType === "veg" ? colors.success : colors.danger },
+            ]}
+          />
+        </View>
+        <Text style={styles.dishName} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.dishShop} numberOfLines={1}>{shop.name}</Text>
+        <Text style={styles.dishPrice}>₹{finalPrice}</Text>
       </View>
     </Pressable>
   );
@@ -169,48 +426,164 @@ function ShopCard({ shop }: { shop: Shop }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingBottom: 14,
     backgroundColor: colors.card,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    gap: 12,
   },
-  headerLabel: { fontSize: 12, color: colors.muted },
-  headerCity: { fontSize: 18, fontWeight: "700", color: colors.text, marginTop: 2 },
-  empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 16 },
+  headerTop: { flexDirection: "row", alignItems: "center" },
+  greeting: { fontSize: 13, color: colors.muted, fontWeight: "500" },
+  locationRow: { flexDirection: "row", alignItems: "center", marginTop: 4, gap: 4 },
+  locationPin: { fontSize: 15 },
+  headerCity: { fontSize: 19, fontWeight: "800", color: colors.text, maxWidth: "85%" },
+  chevron: { fontSize: 13, color: colors.muted, marginTop: 2 },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.bg,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44,
+    gap: 8,
+  },
+  searchIcon: { fontSize: 15 },
+  searchInput: { flex: 1, fontSize: 15, color: colors.text, padding: 0 },
+  micButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  micIcon: { fontSize: 16 },
+  vegRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.bg,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+  },
+  vegLabelRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  vegDotOuter: {
+    width: 16,
+    height: 16,
+    borderWidth: 1.5,
+    borderRadius: 3,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  vegDotInner: { width: 8, height: 8, borderRadius: 4 },
+  vegLabel: { fontSize: 14, fontWeight: "700", color: colors.text },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  categoryChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  categoryChipText: { fontSize: 13, fontWeight: "600", color: colors.text },
+  categoryChipTextActive: { color: "#fff", fontWeight: "700" },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.muted,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginBottom: 10,
+  },
+  empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 10 },
+  emptyEmoji: { fontSize: 40, marginBottom: 4 },
+  emptyTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
   emptyText: { fontSize: 15, color: colors.muted, textAlign: "center" },
   primaryButton: {
     backgroundColor: colors.primary,
     borderRadius: 12,
     paddingHorizontal: 24,
     paddingVertical: 12,
+    marginTop: 8,
   },
   primaryButtonText: { color: "#fff", fontWeight: "700" },
   card: {
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: 18,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
+  },
+  cardPressed: { opacity: 0.85 },
+  cardImage: { width: "100%", height: 160, backgroundColor: colors.border },
+  closedOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  closedOverlayText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  ratingBadge: {
+    position: "absolute",
+    bottom: 10,
+    left: 10,
+    backgroundColor: colors.success,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  ratingBadgeText: { color: "#fff", fontSize: 12, fontWeight: "800" },
+  cardBody: { padding: 12 },
+  cardTitle: { fontSize: 16, fontWeight: "800", color: colors.text },
+  cardCategories: { fontSize: 12.5, color: colors.muted, marginTop: 3, fontWeight: "500" },
+  cardAddressRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 },
+  cardPinIcon: { fontSize: 11 },
+  cardSubtitle: { fontSize: 12.5, color: colors.muted, flex: 1 },
+  dishGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  dishCard: {
+    width: "47%",
+    backgroundColor: colors.card,
+    borderRadius: 14,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: colors.border,
   },
-  cardImage: { width: "100%", height: 150, backgroundColor: colors.border },
-  closedBadge: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    backgroundColor: "rgba(0,0,0,0.75)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+  dishImage: { width: "100%", height: 100, backgroundColor: colors.border },
+  dishBody: { padding: 10 },
+  foodTypeDot: {
+    width: 13,
+    height: 13,
+    borderWidth: 1.3,
+    borderRadius: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
   },
-  closedBadgeText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  cardBody: { padding: 12 },
-  cardTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
-  cardSubtitle: { fontSize: 13, color: colors.muted, marginTop: 2 },
-  modal: { flex: 1, backgroundColor: colors.bg, paddingTop: 60, paddingHorizontal: 20 },
+  foodTypeInner: { width: 6.5, height: 6.5, borderRadius: 4 },
+  dishName: { fontSize: 13.5, fontWeight: "700", color: colors.text },
+  dishShop: { fontSize: 11.5, color: colors.muted, marginTop: 2 },
+  dishPrice: { fontSize: 13, fontWeight: "800", color: colors.text, marginTop: 4 },
+  modal: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: 20 },
   modalTitle: { fontSize: 22, fontWeight: "800", marginBottom: 16 },
   locateButton: {
     borderWidth: 1,
@@ -218,11 +591,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 14,
   },
   locateButtonText: { color: colors.primary, fontWeight: "700" },
-  cityRow: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  citySearchInput: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    marginBottom: 8,
+    color: colors.text,
+  },
+  cityRow: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   cityRowText: { fontSize: 16, color: colors.text },
+  cityRowCheck: { fontSize: 16, color: colors.primary, fontWeight: "800" },
   closeButton: { paddingVertical: 18, alignItems: "center" },
   closeButtonText: { color: colors.muted, fontSize: 15 },
 });
