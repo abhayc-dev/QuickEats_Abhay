@@ -12,8 +12,11 @@ import {
 } from "react-native";
 import { Link, router } from "expo-router";
 import { api, apiErrorMessage } from "../../lib/api";
+import { signInWithGoogle, GoogleSignInUnavailableError } from "../../lib/googleAuth";
 import { useAuthStore } from "../../store/auth";
 import { colors } from "../../lib/theme";
+import GoogleButton from "../../components/GoogleButton";
+import OrDivider from "../../components/OrDivider";
 
 export default function SignUp() {
   const signIn = useAuthStore((s) => s.signIn);
@@ -22,6 +25,7 @@ export default function SignUp() {
   const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const onSubmit = async () => {
     if (!fullName || !email || !mobile || !password) {
@@ -52,6 +56,30 @@ export default function SignUp() {
       Alert.alert("Sign up failed", apiErrorMessage(error));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onGoogleSignUp = async () => {
+    if (mobile.length < 10) {
+      Alert.alert(
+        "Mobile number required",
+        "Enter your mobile number above first — it's required to create an account."
+      );
+      return;
+    }
+    setGoogleLoading(true);
+    try {
+      const { user, token } = await signInWithGoogle("user", mobile);
+      await signIn(user, token);
+      router.replace("/(tabs)");
+    } catch (error) {
+      if (error instanceof GoogleSignInUnavailableError) {
+        Alert.alert("Google Sign-In unavailable", error.message);
+      } else {
+        Alert.alert("Google sign-up failed", (error as Error).message);
+      }
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -100,6 +128,13 @@ export default function SignUp() {
             <Text style={styles.buttonText}>Sign Up</Text>
           )}
         </Pressable>
+
+        <OrDivider />
+        <GoogleButton
+          label="Sign up with Google"
+          onPress={onGoogleSignUp}
+          loading={googleLoading}
+        />
 
         <Link href="/(auth)/sign-in" asChild>
           <Pressable>

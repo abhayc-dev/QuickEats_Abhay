@@ -12,14 +12,18 @@ import {
 } from "react-native";
 import { Link, router } from "expo-router";
 import { api, apiErrorMessage } from "../../lib/api";
+import { signInWithGoogle, GoogleSignInUnavailableError } from "../../lib/googleAuth";
 import { useAuthStore } from "../../store/auth";
 import { colors } from "../../lib/theme";
+import GoogleButton from "../../components/GoogleButton";
+import OrDivider from "../../components/OrDivider";
 
 export default function SignIn() {
   const signIn = useAuthStore((s) => s.signIn);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const onSubmit = async () => {
     if (!email || !password) {
@@ -36,6 +40,26 @@ export default function SignIn() {
       Alert.alert("Sign in failed", apiErrorMessage(error));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      // Existing accounts only: matches the web app's sign-in behavior,
+      // which doesn't collect a mobile number here. New Google users need
+      // to use Sign Up first (mobile is required to create an account).
+      const { user, token } = await signInWithGoogle("user");
+      await signIn(user, token);
+      router.replace("/(tabs)");
+    } catch (error) {
+      if (error instanceof GoogleSignInUnavailableError) {
+        Alert.alert("Google Sign-In unavailable", error.message);
+      } else {
+        Alert.alert("Google sign-in failed", (error as Error).message);
+      }
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -70,6 +94,9 @@ export default function SignIn() {
           <Text style={styles.buttonText}>Sign In</Text>
         )}
       </Pressable>
+
+      <OrDivider />
+      <GoogleButton onPress={onGoogleSignIn} loading={googleLoading} />
 
       <Link href="/(auth)/sign-up" asChild>
         <Pressable>
