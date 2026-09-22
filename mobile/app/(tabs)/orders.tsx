@@ -1,0 +1,87 @@
+import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { router } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../lib/api";
+import { colors } from "../../lib/theme";
+import type { Order, Shop } from "../../types";
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: "Order placed",
+  preparing: "Preparing",
+  "out of delivery": "Out for delivery",
+  delivered: "Delivered",
+};
+
+export default function Orders() {
+  const ordersQuery = useQuery({
+    queryKey: ["myOrders"],
+    queryFn: async () => (await api.get<Order[]>("/order/my-orders")).data,
+  });
+
+  if (ordersQuery.isLoading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (!ordersQuery.data?.length) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>You haven't placed any orders yet</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>My Orders</Text>
+      <FlatList
+        data={ordersQuery.data}
+        keyExtractor={(o) => o._id}
+        contentContainerStyle={{ padding: 16, gap: 12 }}
+        renderItem={({ item }) => {
+          const shopNames = item.shopOrders
+            .map((so) => (typeof so.shop === "object" ? (so.shop as Shop).name : "Restaurant"))
+            .join(", ");
+          const status = item.shopOrders[0]?.status ?? "pending";
+          return (
+            <Pressable style={styles.card} onPress={() => router.push(`/order/${item._id}`)}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.shopName} numberOfLines={1}>
+                  {shopNames}
+                </Text>
+                <Text style={styles.date}>
+                  {new Date(item.createdAt).toLocaleDateString()} · ₹{item.totalAmount}
+                </Text>
+                <Text style={styles.status}>{STATUS_LABEL[status] ?? status}</Text>
+              </View>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
+          );
+        }}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg, paddingTop: 60 },
+  title: { fontSize: 24, fontWeight: "800", color: colors.text, paddingHorizontal: 16 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg },
+  emptyText: { fontSize: 15, color: colors.muted },
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  shopName: { fontSize: 15, fontWeight: "700", color: colors.text },
+  date: { fontSize: 13, color: colors.muted, marginTop: 4 },
+  status: { fontSize: 13, color: colors.primary, fontWeight: "700", marginTop: 4 },
+  chevron: { fontSize: 24, color: colors.muted },
+});
