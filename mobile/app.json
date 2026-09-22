@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "QuickEats",
+    "name": "ChakiyaEats",
     "slug": "quickeats-mobile",
     "scheme": "quickeats",
     "version": "1.0.0",
@@ -39,7 +39,16 @@
         }
       ],
       "expo-image",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/chakiya-eats-logo.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
+        }
+      ]
     ]
   }
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { router } from "expo-router";
 import { api, apiErrorMessage } from "../lib/api";
 import { useCartStore } from "../store/cart";
 import { useLocationStore } from "../store/location";
+import { useAuthStore } from "../store/auth";
 import { colors } from "../lib/theme";
 import type { Order } from "../types";
 
@@ -22,6 +23,7 @@ type PaymentMethod = "cod" | "online";
 export default function Checkout() {
   const cart = useCartStore();
   const savedLocation = useLocationStore();
+  const user = useAuthStore((s) => s.user);
   const [addressText, setAddressText] = useState(savedLocation.address ?? "");
   const [coords, setCoords] = useState({
     latitude: savedLocation.latitude ?? 0,
@@ -30,6 +32,14 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
   const [locating, setLocating] = useState(false);
   const [placing, setPlacing] = useState(false);
+
+  useEffect(() => {
+    // Reachable only via the Cart's own sign-in gate, but guard here too in
+    // case of a stale deep link or a session that logged out mid-checkout.
+    if (!user) {
+      router.replace({ pathname: "/(auth)/sign-in", params: { redirect: "/checkout" } });
+    }
+  }, [user]);
 
   const total = cart.totalAmount();
 
@@ -100,6 +110,8 @@ export default function Checkout() {
       setPlacing(false);
     }
   };
+
+  if (!user) return null;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>

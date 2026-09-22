@@ -10,7 +10,8 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { Link, router } from "expo-router";
+import { Link, router, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, apiErrorMessage } from "../../lib/api";
 import { signInWithGoogle, GoogleSignInUnavailableError } from "../../lib/googleAuth";
 import { useAuthStore } from "../../store/auth";
@@ -20,10 +21,21 @@ import OrDivider from "../../components/OrDivider";
 
 export default function SignIn() {
   const signIn = useAuthStore((s) => s.signIn);
+  const { redirect } = useLocalSearchParams<{ redirect?: string }>();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  const goToDestination = () => {
+    router.replace(redirect ? (redirect as any) : "/(tabs)");
+  };
+
+  const skip = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/(tabs)");
+  };
 
   const onSubmit = async () => {
     if (!email || !password) {
@@ -35,7 +47,7 @@ export default function SignIn() {
       const { data } = await api.post("/auth/signin", { email, password });
       const { token, ...user } = data;
       await signIn(user, token);
-      router.replace("/(tabs)");
+      goToDestination();
     } catch (error) {
       Alert.alert("Sign in failed", apiErrorMessage(error));
     } finally {
@@ -51,7 +63,7 @@ export default function SignIn() {
       // to use Sign Up first (mobile is required to create an account).
       const { user, token } = await signInWithGoogle("user");
       await signIn(user, token);
-      router.replace("/(tabs)");
+      goToDestination();
     } catch (error) {
       if (error instanceof GoogleSignInUnavailableError) {
         Alert.alert("Google Sign-In unavailable", error.message);
@@ -68,8 +80,14 @@ export default function SignIn() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <Text style={styles.title}>QuickEats</Text>
-      <Text style={styles.subtitle}>Sign in to order food</Text>
+      <Pressable style={[styles.skipButton, { top: insets.top + 10 }]} onPress={skip} hitSlop={10}>
+        <Text style={styles.skipButtonText}>✕</Text>
+      </Pressable>
+
+      <Text style={styles.title}>ChakiyaEats</Text>
+      <Text style={styles.subtitle}>
+        {redirect ? "Sign in to complete your order" : "Sign in to order food"}
+      </Text>
 
       <TextInput
         style={styles.input}
@@ -98,7 +116,7 @@ export default function SignIn() {
       <OrDivider />
       <GoogleButton onPress={onGoogleSignIn} loading={googleLoading} />
 
-      <Link href="/(auth)/sign-up" asChild>
+      <Link href={{ pathname: "/(auth)/sign-up", params: redirect ? { redirect } : {} }} asChild>
         <Pressable>
           <Text style={styles.link}>Don't have an account? Sign up</Text>
         </Pressable>
@@ -114,6 +132,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     backgroundColor: colors.bg,
   },
+  skipButton: {
+    position: "absolute",
+    right: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  skipButtonText: { fontSize: 16, color: colors.muted, fontWeight: "700" },
   title: {
     fontSize: 34,
     fontWeight: "800",

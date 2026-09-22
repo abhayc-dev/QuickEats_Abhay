@@ -1,7 +1,7 @@
 import { Redirect } from "expo-router";
-import { useAuthStore } from "../store/auth";
 
+// Browsing (Home, Shop, Cart) doesn't need an account — only placing an
+// order does, gated at that point instead of on app launch.
 export default function Index() {
-  const user = useAuthStore((s) => s.user);
-  return <Redirect href={user ? "/(tabs)" : "/(auth)/sign-in"} />;
+  return <Redirect href="/(tabs)" />;
 }

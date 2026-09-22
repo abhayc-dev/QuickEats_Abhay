@@ -14,11 +14,31 @@ export default function Profile() {
         style: "destructive",
         onPress: async () => {
           await signOut();
-          router.replace("/(auth)/sign-in");
         },
       },
     ]);
   };
+
+  if (!user) {
+    return (
+      <View style={styles.guestContainer}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>👤</Text>
+        </View>
+        <Text style={styles.guestTitle}>You're browsing as a guest</Text>
+        <Text style={styles.guestText}>Sign in to view your profile and past orders</Text>
+        <Pressable
+          style={styles.primaryButton}
+          onPress={() => router.push("/(auth)/sign-in")}
+        >
+          <Text style={styles.primaryButtonText}>Sign In</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push("/(auth)/sign-up")}>
+          <Text style={styles.guestLink}>Create an account</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -51,6 +71,24 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, paddingTop: 80, alignItems: "center" },
+  guestContainer: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    gap: 6,
+  },
+  guestTitle: { fontSize: 18, fontWeight: "800", color: colors.text, marginTop: 18 },
+  guestText: { fontSize: 14, color: colors.muted, textAlign: "center", marginBottom: 18 },
+  primaryButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+  },
+  primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  guestLink: { color: colors.primary, fontWeight: "600", marginTop: 16, fontSize: 14 },
   avatar: {
     width: 84,
     height: 84,
