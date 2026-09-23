@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,9 @@ import {
   Switch,
   RefreshControl,
   ScrollView,
+  Animated,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
 } from "react-native";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
@@ -57,6 +60,38 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [vegOnly, setVegOnly] = useState(false);
   const [category, setCategory] = useState("All");
+  const [locationRowHeight, setLocationRowHeight] = useState(0);
+
+  // Zomato-style collapsing header: the greeting/location row slides away
+  // as soon as the list scrolls down, and comes right back on the first
+  // upward scroll — direction-based, not just "past some offset", so it
+  // reacts the moment the user reverses their swipe.
+  const locationAnim = useRef(new Animated.Value(0)).current; // 0 = shown, 1 = hidden
+  const lastScrollY = useRef(0);
+  const hiddenRef = useRef(false);
+
+  const setLocationHidden = (hidden: boolean) => {
+    if (hiddenRef.current === hidden) return;
+    hiddenRef.current = hidden;
+    Animated.timing(locationAnim, {
+      toValue: hidden ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const onListScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = Math.max(0, e.nativeEvent.contentOffset.y);
+    const diff = y - lastScrollY.current;
+    if (y < 20) {
+      setLocationHidden(false);
+    } else if (diff > 6) {
+      setLocationHidden(true);
+    } else if (diff < -6) {
+      setLocationHidden(false);
+    }
+    lastScrollY.current = y;
+  };
 
   const citiesQuery = useQuery({
     queryKey: ["cities"],
@@ -202,8 +237,27 @@ export default function Home() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.headerTop}>
-          <View style={{ flex: 1 }}>
+        <Animated.View
+          style={[
+            styles.headerTop,
+            locationRowHeight
+              ? {
+                  height: locationAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [locationRowHeight, 0],
+                  }),
+                }
+              : null,
+            { opacity: locationAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) },
+            { overflow: "hidden" },
+          ]}
+        >
+          <View
+            style={{ flex: 1 }}
+            onLayout={(e) => {
+              if (!locationRowHeight) setLocationRowHeight(e.nativeEvent.layout.height);
+            }}
+          >
             <Text style={styles.greeting}>
               {greeting()}{user?.fullName ? `, ${user.fullName.split(" ")[0]}` : ""}
             </Text>
@@ -215,7 +269,7 @@ export default function Home() {
               <Text style={styles.chevron}>▾</Text>
             </Pressable>
           </View>
-        </View>
+        </Animated.View>
 
         {!!city && (
           <>
@@ -300,6 +354,8 @@ export default function Home() {
       ) : shopsQuery.isError || !shopsQuery.data?.length ? (
         <ScrollView
           contentContainerStyle={{ flexGrow: 1 }}
+          onScroll={onListScroll}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
@@ -319,7 +375,9 @@ export default function Home() {
         <FlatList
           data={filteredShops}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={{ padding: 16, paddingTop: 4, gap: 14 }}
+          contentContainerStyle={{ padding: 16, paddingTop: 3, gap: 14 }}
+          onScroll={onListScroll}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
