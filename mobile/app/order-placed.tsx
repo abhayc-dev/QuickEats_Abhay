@@ -1,16 +1,26 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import LottieView from "lottie-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { createAudioPlayer } from "expo-audio";
 import { colors } from "../lib/theme";
 
-// Same checkmark.json used on the QuickEats website (frontend/src/pages/
-// OrderPlaced.jsx) — a cart icon inside a ring that fills like a clock,
-// then crossfades into a green circle with a checkmark. Reusing the file
-// as-is keeps the two apps' order-confirmation moments identical.
+// checkmark.json (the website's own animation) plays its cart-fills-ring
+// intro exactly once, cut at frame 42 — right as it starts crossfading into
+// its own plain green circle, which we never actually show. Once that cut
+// point is hit we switch entirely to tick-loop.json (the file provided
+// directly for this purpose — a self-contained confetti + checkmark clip),
+// which then plays on a continuous loop.
+const INTRO_CUT_FRAME = 42;
+
 export default function OrderPlaced() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
+  const introRef = useRef<LottieView>(null);
+  const [showLoop, setShowLoop] = useState(false);
+
+  useEffect(() => {
+    introRef.current?.play(0, INTRO_CUT_FRAME);
+  }, []);
 
   useEffect(() => {
     // Fires once, right as the ring-fill animation starts — the Zomato-style
@@ -23,12 +33,22 @@ export default function OrderPlaced() {
 
   return (
     <View style={styles.container}>
-      <LottieView
-        source={require("../assets/checkmark.json")}
-        autoPlay
-        loop={false}
-        style={styles.lottie}
-      />
+      {showLoop ? (
+        <LottieView
+          source={require("../assets/tick-loop.json")}
+          autoPlay
+          loop
+          style={styles.lottieLoop}
+        />
+      ) : (
+        <LottieView
+          ref={introRef}
+          source={require("../assets/checkmark.json")}
+          loop={false}
+          style={styles.lottie}
+          onAnimationFinish={() => setShowLoop(true)}
+        />
+      )}
 
       <Text style={styles.title}>Order Placed!</Text>
       <Text style={styles.subtitle}>
@@ -55,6 +75,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   lottie: { width: 150, height: 150 },
+  lottieLoop: { width: 230, height: 230 },
   title: { fontSize: 24, fontWeight: "800", color: colors.text, marginTop: 8 },
   subtitle: {
     fontSize: 14,
