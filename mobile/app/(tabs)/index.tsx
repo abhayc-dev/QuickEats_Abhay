@@ -10,6 +10,8 @@ import {
   Alert,
   TextInput,
   Switch,
+  RefreshControl,
+  ScrollView,
 } from "react-native";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
@@ -66,7 +68,18 @@ export default function Home() {
     queryFn: async () =>
       (await api.get<Shop[]>(`/shop/get-by-city/${encodeURIComponent(city!)}`)).data,
     enabled: !!city,
+    // Tab screens stay mounted in Expo Router, so without this a newly
+    // added restaurant/item would only show up once the 30s staleTime
+    // happened to line up with some other refetch trigger. Pull-to-refresh
+    // (below) covers the "I want it now" case; this covers "I forgot to".
+    refetchInterval: 20_000,
   });
+
+  const refreshing = shopsQuery.isRefetching || citiesQuery.isRefetching;
+  const onRefresh = () => {
+    shopsQuery.refetch();
+    citiesQuery.refetch();
+  };
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -260,10 +273,18 @@ export default function Home() {
       ) : shopsQuery.isLoading ? (
         <ActivityIndicator style={{ marginTop: 40 }} size="large" color={colors.primary} />
       ) : shopsQuery.isError || !shopsQuery.data?.length ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyEmoji}>😕</Text>
-          <Text style={styles.emptyText}>No restaurants found in {city} yet.</Text>
-        </View>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          }
+        >
+          <View style={styles.empty}>
+            <Text style={styles.emptyEmoji}>😕</Text>
+            <Text style={styles.emptyText}>No restaurants found in {city} yet.</Text>
+            <Text style={styles.emptyHint}>Pull down to refresh</Text>
+          </View>
+        </ScrollView>
       ) : !filteredShops.length && !filteredItems.length ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🔍</Text>
@@ -274,6 +295,9 @@ export default function Home() {
           data={filteredShops}
           keyExtractor={(item) => item._id}
           contentContainerStyle={{ padding: 16, paddingTop: 4, gap: 14 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          }
           ListHeaderComponent={
             !!filteredShops.length ? (
               <Text style={styles.sectionTitle}>
@@ -501,6 +525,7 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 40, marginBottom: 4 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
   emptyText: { fontSize: 15, color: colors.muted, textAlign: "center" },
+  emptyHint: { fontSize: 13, color: colors.muted, textAlign: "center", marginTop: 10, opacity: 0.7 },
   primaryButton: {
     backgroundColor: colors.primary,
     borderRadius: 12,
