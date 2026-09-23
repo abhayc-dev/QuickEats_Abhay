@@ -32,7 +32,7 @@ function shopIdOf(so: { shop: { _id: string } | string }) {
 // socket event arrives, rather than waiting on the next poll.
 function patchOrderStatus(orderId: string, shopId: string, status: ShopOrderStatus) {
   queryClient.setQueryData<Order>(["order", orderId], (old) => {
-    if (!old) return old;
+    if (!old || !Array.isArray(old.shopOrders)) return old;
     return {
       ...old,
       shopOrders: old.shopOrders.map((so) =>
@@ -43,7 +43,7 @@ function patchOrderStatus(orderId: string, shopId: string, status: ShopOrderStat
   queryClient.setQueryData<Order[]>(["myOrders"], (old) => {
     if (!old) return old;
     return old.map((o) =>
-      o._id === orderId
+      o._id === orderId && Array.isArray(o.shopOrders)
         ? {
             ...o,
             shopOrders: o.shopOrders.map((so) =>
