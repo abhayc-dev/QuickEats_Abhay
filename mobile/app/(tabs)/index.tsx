@@ -110,10 +110,19 @@ export default function Home() {
     refetchInterval: 20_000,
   });
 
-  const refreshing = shopsQuery.isRefetching || citiesQuery.isRefetching;
-  const onRefresh = () => {
-    shopsQuery.refetch();
-    citiesQuery.refetch();
+  // Bound to isRefetching before, so the pull-to-refresh spinner popped up
+  // on its own every time the 20s background refetchInterval fired below —
+  // it looked like the whole screen was randomly reloading. Tracking this
+  // separately means the spinner only shows for an actual pull-to-refresh;
+  // the interval keeps data fresh silently in the background either way.
+  const [manualRefreshing, setManualRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setManualRefreshing(true);
+    try {
+      await Promise.all([shopsQuery.refetch(), citiesQuery.refetch()]);
+    } finally {
+      setManualRefreshing(false);
+    }
   };
 
   const categories = useMemo(() => {
@@ -357,7 +366,7 @@ export default function Home() {
           onScroll={onListScroll}
           scrollEventThrottle={16}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+            <RefreshControl refreshing={manualRefreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
         >
           <View style={styles.empty}>
@@ -379,7 +388,7 @@ export default function Home() {
           onScroll={onListScroll}
           scrollEventThrottle={16}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+            <RefreshControl refreshing={manualRefreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
           ListHeaderComponent={
             !!filteredShops.length ? (
