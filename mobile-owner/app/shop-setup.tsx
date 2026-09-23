@@ -14,15 +14,31 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { api, apiErrorMessage } from "../lib/api";
+import { useAuthStore } from "../store/auth";
 import { colors } from "../lib/theme";
 import type { Shop } from "../types";
 
 export default function ShopSetup() {
+  const { user, signOut } = useAuthStore();
   const shopQuery = useQuery({
     queryKey: ["myShop"],
     queryFn: async () => (await api.get<Shop>("/shop/get-my")).data,
     retry: false,
   });
+
+  const onSignOut = () => {
+    Alert.alert("Sign out", `Sign out of ${user?.email}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: async () => {
+          await signOut();
+          router.replace("/(auth)/sign-in");
+        },
+      },
+    ]);
+  };
 
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
@@ -95,6 +111,15 @@ export default function ShopSetup() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <View style={styles.accountRow}>
+        <Text style={styles.accountText} numberOfLines={1}>
+          Signed in as {user?.email}
+        </Text>
+        <Pressable onPress={onSignOut} hitSlop={8}>
+          <Text style={styles.signOutLink}>Not you? Sign out</Text>
+        </Pressable>
+      </View>
+
       <Text style={styles.intro}>
         {shopQuery.data
           ? "Update your restaurant's details below."
@@ -146,6 +171,21 @@ export default function ShopSetup() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
+  accountRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+    gap: 10,
+  },
+  accountText: { fontSize: 12.5, color: colors.muted, flex: 1 },
+  signOutLink: { fontSize: 12.5, color: colors.danger, fontWeight: "700" },
   intro: { fontSize: 14, color: colors.muted, marginBottom: 16 },
   imagePicker: { marginBottom: 20 },
   imagePreview: { width: "100%", height: 160, borderRadius: 14, backgroundColor: colors.border },
