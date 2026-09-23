@@ -45,6 +45,13 @@ export default function SignIn() {
     setLoading(true);
     try {
       const { data } = await api.post("/auth/signin", { email, password });
+      if (data.role !== "user") {
+        Alert.alert(
+          "Not a customer account",
+          "This app is for ordering food. Restaurant partner and delivery accounts use their own apps."
+        );
+        return;
+      }
       const { token, ...user } = data;
       await signIn(user, token);
       goToDestination();
@@ -62,6 +69,13 @@ export default function SignIn() {
       // which doesn't collect a mobile number here. New Google users need
       // to use Sign Up first (mobile is required to create an account).
       const { user, token } = await signInWithGoogle("user");
+      if (user.role !== "user") {
+        Alert.alert(
+          "Not a customer account",
+          "This app is for ordering food. Restaurant partner and delivery accounts use their own apps."
+        );
+        return;
+      }
       await signIn(user, token);
       goToDestination();
     } catch (error) {

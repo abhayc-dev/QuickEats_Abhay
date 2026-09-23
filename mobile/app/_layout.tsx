@@ -25,7 +25,8 @@ export default function RootLayout() {
   const hydrateAuth = useAuthStore((s) => s.hydrate);
   const hydrateCart = useCartStore((s) => s.hydrate);
   const hydrateLocation = useLocationStore((s) => s.hydrate);
-  const userId = useAuthStore((s) => s.user?._id);
+  const user = useAuthStore((s) => s.user);
+  const signOut = useAuthStore((s) => s.signOut);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -48,7 +49,21 @@ export default function RootLayout() {
     // stale UI. Guest browsing data (shops/items) is harmless to keep, but
     // clearing everything on any auth change is simplest and safest.
     queryClient.clear();
-  }, [userId]);
+  }, [user?._id]);
+
+  useEffect(() => {
+    // This app only handles the "user" role — sign-in already rejects other
+    // roles going forward, but a session from before that check (or a token
+    // whose role changed server-side) can still be sitting in SecureStore.
+    // The backend's /order/my-orders returns a differently-shaped response
+    // for owner accounts (a single shopOrders object instead of an array),
+    // which crashes every screen that assumes the customer shape. Signing
+    // out here rather than trying to render owner-shaped data as if it were
+    // a customer's own orders.
+    if (user && user.role !== "user") {
+      signOut();
+    }
+  }, [user]);
 
   if (!ready) {
     return (
