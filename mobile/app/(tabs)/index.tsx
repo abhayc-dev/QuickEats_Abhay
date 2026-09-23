@@ -89,6 +89,21 @@ export default function Home() {
     return ["All", ...Array.from(set).sort()];
   }, [shopsQuery.data]);
 
+  // One representative photo per category, pulled straight from a real menu
+  // item in that category (first one found) — so "Burgers" shows an actual
+  // burger from the shop that added it, not a stock/fabricated image.
+  const categoryThumbnails = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const shop of shopsQuery.data ?? []) {
+      for (const item of shop.items) {
+        if (item.category && item.image && !map[item.category]) {
+          map[item.category] = item.image;
+        }
+      }
+    }
+    return map;
+  }, [shopsQuery.data]);
+
   const q = search.trim().toLowerCase();
 
   const itemMatchesFilters = (item: Item) =>
@@ -239,22 +254,32 @@ export default function Home() {
                 showsHorizontalScrollIndicator={false}
                 data={categories}
                 keyExtractor={(c) => c}
-                contentContainerStyle={{ gap: 8 }}
-                renderItem={({ item: c }) => (
-                  <Pressable
-                    style={[styles.categoryChip, category === c && styles.categoryChipActive]}
-                    onPress={() => setCategory(c)}
-                  >
-                    <Text
-                      style={[
-                        styles.categoryChipText,
-                        category === c && styles.categoryChipTextActive,
-                      ]}
-                    >
-                      {c}
-                    </Text>
-                  </Pressable>
-                )}
+                contentContainerStyle={{ gap: 16, paddingRight: 4 }}
+                renderItem={({ item: c }) => {
+                  const active = category === c;
+                  const thumb = categoryThumbnails[c];
+                  return (
+                    <Pressable style={styles.categoryTile} onPress={() => setCategory(c)}>
+                      <View style={[styles.categoryImageWrap, active && styles.categoryImageWrapActive]}>
+                        {thumb ? (
+                          <Image source={{ uri: thumb }} style={styles.categoryImage} contentFit="cover" />
+                        ) : (
+                          <View style={styles.categoryImageFallback}>
+                            <Text style={styles.categoryImageFallbackText}>
+                              {c === "All" ? "🍽️" : "🍴"}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text
+                        style={[styles.categoryTileText, active && styles.categoryTileTextActive]}
+                        numberOfLines={1}
+                      >
+                        {c}
+                      </Text>
+                    </Pressable>
+                  );
+                }}
               />
             )}
           </>
@@ -502,17 +527,38 @@ const styles = StyleSheet.create({
   },
   vegDotInner: { width: 8, height: 8, borderRadius: 4 },
   vegLabel: { fontSize: 14, fontWeight: "700", color: colors.text },
-  categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+  categoryTile: { alignItems: "center", width: 68 },
+  categoryImageWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    padding: 2,
+    borderWidth: 2,
+    borderColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryImageWrapActive: { borderColor: colors.primary },
+  categoryImage: { width: "100%", height: "100%", borderRadius: 28, backgroundColor: colors.border },
+  categoryImageFallback: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 28,
     backgroundColor: colors.bg,
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: colors.border,
   },
-  categoryChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  categoryChipText: { fontSize: 13, fontWeight: "600", color: colors.text },
-  categoryChipTextActive: { color: "#fff", fontWeight: "700" },
+  categoryImageFallbackText: { fontSize: 26 },
+  categoryTileText: {
+    fontSize: 11.5,
+    fontWeight: "600",
+    color: colors.muted,
+    marginTop: 6,
+    textAlign: "center",
+  },
+  categoryTileTextActive: { color: colors.primary, fontWeight: "800" },
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700",
