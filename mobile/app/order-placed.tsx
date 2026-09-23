@@ -38,7 +38,7 @@ export default function OrderPlaced() {
           source={require("../assets/tick-loop.json")}
           autoPlay
           loop
-          style={styles.lottie}
+          style={styles.lottieLoop}
         />
       ) : (
         <LottieView
@@ -75,6 +75,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   lottie: { width: 150, height: 150 },
+  lottieLoop: { width: 230, height: 230 },
   title: { fontSize: 24, fontWeight: "800", color: colors.text, marginTop: 8 },
   subtitle: {
     fontSize: 14,
