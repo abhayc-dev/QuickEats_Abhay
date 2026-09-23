@@ -19,7 +19,10 @@ export default function OrderDetail() {
   const orderQuery = useQuery({
     queryKey: ["order", id],
     queryFn: async () => (await api.get<Order>(`/order/get-order-by-id/${id}`)).data,
-    refetchInterval: 15_000,
+    // Status changes now arrive instantly over the socket connection in the
+    // root layout (see patchOrderStatus) — this is just a safety net for a
+    // missed event or a dropped connection, not the primary sync path.
+    refetchInterval: 60_000,
   });
 
   if (orderQuery.isLoading || !orderQuery.data) {

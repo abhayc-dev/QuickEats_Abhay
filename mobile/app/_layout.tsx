@@ -9,6 +9,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "../store/auth";
 import { useCartStore } from "../store/cart";
 import { useLocationStore } from "../store/location";
+import { getSocket, disconnectSocket } from "../lib/socket";
+import type { Order, ShopOrderStatus } from "../types";
 
 // Keep the native splash (configured in app.json, same logo) up until we
 // explicitly hide it below, so there's no blank/spinner flash between the
@@ -20,6 +22,38 @@ const MIN_SPLASH_MS = 1100;
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
+
+function shopIdOf(so: { shop: { _id: string } | string }) {
+  return typeof so.shop === "string" ? so.shop : so.shop._id;
+}
+
+// Patches both the order-detail cache and the orders-list cache directly
+// (no refetch) so a status change from the owner shows up the instant the
+// socket event arrives, rather than waiting on the next poll.
+function patchOrderStatus(orderId: string, shopId: string, status: ShopOrderStatus) {
+  queryClient.setQueryData<Order>(["order", orderId], (old) => {
+    if (!old) return old;
+    return {
+      ...old,
+      shopOrders: old.shopOrders.map((so) =>
+        shopIdOf(so) === shopId ? { ...so, status } : so
+      ),
+    };
+  });
+  queryClient.setQueryData<Order[]>(["myOrders"], (old) => {
+    if (!old) return old;
+    return old.map((o) =>
+      o._id === orderId
+        ? {
+            ...o,
+            shopOrders: o.shopOrders.map((so) =>
+              shopIdOf(so) === shopId ? { ...so, status } : so
+            ),
+          }
+        : o
+    );
+  });
+}
 
 export default function RootLayout() {
   const hydrateAuth = useAuthStore((s) => s.hydrate);
@@ -64,6 +98,39 @@ export default function RootLayout() {
       signOut();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      disconnectSocket();
+      return;
+    }
+
+    const socket = getSocket();
+    // Re-emitted on every connect (including auto-reconnects) — the server
+    // only routes "update-status" to this socket once it's joined a room
+    // named after this customer's own user id, per backend/socket.js.
+    const onConnect = () => socket.emit("identity", { userId: user._id });
+    const onStatusUpdate = ({
+      orderId,
+      shopId,
+      status,
+    }: {
+      orderId: string;
+      shopId: string;
+      status: ShopOrderStatus;
+    }) => patchOrderStatus(orderId, shopId, status);
+
+    socket.on("connect", onConnect);
+    socket.on("update-status", onStatusUpdate);
+    socket.on("orderDelivered", onStatusUpdate);
+    socket.connect();
+
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("update-status", onStatusUpdate);
+      socket.off("orderDelivered", onStatusUpdate);
+    };
+  }, [user?._id]);
 
   if (!ready) {
     return (

@@ -1,20 +1,87 @@
-import { useEffect, useState } from "react";
-import { View, Image } from "react-native";
-import { Stack } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { View, Image, Vibration } from "react-native";
+import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
+import { createAudioPlayer, type AudioPlayer } from "expo-audio";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "../store/auth";
+import { getSocket, disconnectSocket } from "../lib/socket";
+import NewOrderModal from "../components/NewOrderModal";
+import type { OwnerOrderRow } from "../types";
 
 SplashScreen.preventAutoHideAsync();
 
 const MIN_SPLASH_MS = 1100;
+// Double buzz so it's distinguishable from a plain incoming-message vibration.
+const NEW_ORDER_VIBRATION_PATTERN = [0, 400, 200, 400];
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
+
+function OwnerRealtimeBridge() {
+  const user = useAuthStore((s) => s.user);
+  const [incomingOrder, setIncomingOrder] = useState<OwnerOrderRow | null>(null);
+  const playerRef = useRef<AudioPlayer | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      disconnectSocket();
+      return;
+    }
+
+    const socket = getSocket();
+
+    // Re-emitted on every connect (including auto-reconnects), matching the
+    // web app's pattern — the server only routes "newOrder" to this socket
+    // once it's joined a room named after the owner's own user id.
+    const onConnect = () => socket.emit("identity", { userId: user._id });
+
+    const onNewOrder = (payload: OwnerOrderRow) => {
+      setIncomingOrder(payload);
+      Vibration.vibrate(NEW_ORDER_VIBRATION_PATTERN);
+      try {
+        if (!playerRef.current) {
+          playerRef.current = createAudioPlayer(require("../assets/notification.mp3"));
+        }
+        playerRef.current.seekTo(0);
+        playerRef.current.play();
+      } catch {
+        // Non-fatal — a missed sound shouldn't block the popup/vibration.
+      }
+      queryClient.invalidateQueries({ queryKey: ["ownerOrders"] });
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("newOrder", onNewOrder);
+    socket.connect();
+
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("newOrder", onNewOrder);
+    };
+  }, [user?._id]);
+
+  useEffect(() => {
+    return () => {
+      playerRef.current?.release();
+    };
+  }, []);
+
+  return (
+    <NewOrderModal
+      order={incomingOrder}
+      onDismiss={() => setIncomingOrder(null)}
+      onView={() => {
+        setIncomingOrder(null);
+        router.push("/(tabs)/orders");
+      }}
+    />
+  );
+}
 
 export default function RootLayout() {
   const hydrateAuth = useAuthStore((s) => s.hydrate);
@@ -63,6 +130,7 @@ export default function RootLayout() {
             <Stack.Screen name="item/new" options={{ headerShown: true, title: "Add Item" }} />
             <Stack.Screen name="item/[id]/edit" options={{ headerShown: true, title: "Edit Item" }} />
           </Stack>
+          <OwnerRealtimeBridge />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
