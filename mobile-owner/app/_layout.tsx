@@ -7,12 +7,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "../store/auth";
-import { useCartStore } from "../store/cart";
-import { useLocationStore } from "../store/location";
 
-// Keep the native splash (configured in app.json, same logo) up until we
-// explicitly hide it below, so there's no blank/spinner flash between the
-// native splash and our own branded loading view.
 SplashScreen.preventAutoHideAsync();
 
 const MIN_SPLASH_MS = 1100;
@@ -23,30 +18,23 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   const hydrateAuth = useAuthStore((s) => s.hydrate);
-  const hydrateCart = useCartStore((s) => s.hydrate);
-  const hydrateLocation = useLocationStore((s) => s.hydrate);
   const userId = useAuthStore((s) => s.user?._id);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Hand off from the native splash to this same-logo JS view immediately;
-    // the minimum delay below keeps the logo on screen a moment even when
-    // hydration (reading a few local storage keys) finishes near-instantly.
     SplashScreen.hideAsync();
     const start = Date.now();
-    Promise.all([hydrateAuth(), hydrateCart(), hydrateLocation()]).finally(() => {
+    hydrateAuth().finally(() => {
       const remaining = MIN_SPLASH_MS - (Date.now() - start);
       setTimeout(() => setReady(true), Math.max(0, remaining));
     });
   }, []);
 
   useEffect(() => {
-    // Without this, signing out and a different account signing in on the
+    // Without this, signing out and a different owner signing in on the
     // same device (or in dev, Fast Refresh across accounts) would show the
-    // previous account's cached orders/profile data until every query
-    // happened to refetch — a real cross-account data leak, not just a
-    // stale UI. Guest browsing data (shops/items) is harmless to keep, but
-    // clearing everything on any auth change is simplest and safest.
+    // previous owner's cached shop/orders/menu until every query happened
+    // to refetch — a real cross-account data leak, not just a stale UI.
     queryClient.clear();
   }, [userId]);
 
@@ -71,9 +59,9 @@ export default function RootLayout() {
             <Stack.Screen name="index" />
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="shop/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="checkout" options={{ headerShown: true, title: "Checkout" }} />
-            <Stack.Screen name="order/[id]" options={{ headerShown: true, title: "Order" }} />
+            <Stack.Screen name="shop-setup" options={{ headerShown: true, title: "Shop Details" }} />
+            <Stack.Screen name="item/new" options={{ headerShown: true, title: "Add Item" }} />
+            <Stack.Screen name="item/[id]/edit" options={{ headerShown: true, title: "Edit Item" }} />
           </Stack>
         </QueryClientProvider>
       </SafeAreaProvider>
