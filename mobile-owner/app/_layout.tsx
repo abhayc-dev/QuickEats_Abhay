@@ -3,12 +3,15 @@ import { View, Image, Vibration } from "react-native";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
+import * as Notifications from "expo-notifications";
 import { createAudioPlayer, type AudioPlayer } from "expo-audio";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "../store/auth";
 import { getSocket, disconnectSocket } from "../lib/socket";
+import { api } from "../lib/api";
+import { registerForPushNotificationsAsync } from "../lib/pushNotifications";
 import NewOrderModal from "../components/NewOrderModal";
 import type { OwnerOrderRow } from "../types";
 
@@ -69,6 +72,42 @@ function OwnerRealtimeBridge() {
     return () => {
       playerRef.current?.release();
     };
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    // Fire-and-forget: registerForPushNotificationsAsync already swallows
+    // every failure (denied permission, no EAS project id, simulator), so
+    // there's nothing to await or branch on here beyond "did we get a token".
+    registerForPushNotificationsAsync().then((token) => {
+      if (token) {
+        api.post("/user/register-push-token", { token }).catch(() => {
+          // Non-fatal — worst case this device just doesn't get pushes
+          // until the next successful registration (e.g. next app open).
+        });
+      }
+    });
+  }, [user?._id]);
+
+  useEffect(() => {
+    // A tap on the OS notification (app backgrounded or cold-started from
+    // it) should land the owner straight on Orders, same as tapping "View
+    // Order" in the in-app popup.
+    const goToOrders = () => router.push("/(tabs)/orders");
+
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response?.notification.request.content.data?.type === "newOrder") {
+        goToOrders();
+      }
+    });
+
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      if (response.notification.request.content.data?.type === "newOrder") {
+        goToOrders();
+      }
+    });
+
+    return () => subscription.remove();
   }, []);
 
   return (
