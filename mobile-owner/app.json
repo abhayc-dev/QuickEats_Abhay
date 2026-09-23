@@ -44,7 +44,13 @@
           "backgroundColor": "#FFFFFF"
         }
       ],
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-notifications",
+        {
+          "sounds": ["./assets/notification.mp3"]
+        }
+      ]
     ]
   }
 }

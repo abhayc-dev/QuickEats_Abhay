@@ -49,6 +49,12 @@ const userSchema = new mongoose.Schema(
     // ✅  socket
     socketId: { type: String, default: null },
     isOnline: { type: Boolean, default: false },
+
+    // ✅ Expo push tokens, for alerting owners of new orders when their app
+    // is backgrounded or closed (sockets only reach an open, connected app).
+    // An array since the same account can be signed in on more than one
+    // device.
+    expoPushTokens: { type: [String], default: [] },
   },
   { timestamps: true }
 );

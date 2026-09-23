@@ -3,6 +3,7 @@ import Order from "../models/order.model.js";
 import Shop from "../models/shop.model.js";
 import User from "../models/user.model.js";
 import { sendOtpToDelivery } from "../utils/mail.js";
+import { sendPushNotifications } from "../utils/push.js";
 import Razorpay from "razorpay";
 import dotenv from "dotenv";
 dotenv.config();
@@ -125,7 +126,7 @@ export const placeOrder = async (req, res) => {
       "name image price"
     );
     await newOrder.populate("shopOrders.shop", "name");
-    await newOrder.populate("shopOrders.owner", "name socketId");
+    await newOrder.populate("shopOrders.owner", "name socketId expoPushTokens");
     await newOrder.populate("user", "name email mobile");
 
     //! bring the io from the index.js in app
@@ -149,6 +150,13 @@ export const placeOrder = async (req, res) => {
         } else {
              console.log(`[Socket Debug] No socket ID for owner ${shopOrder.owner.name}`);
         }
+        // Socket only reaches an owner whose app is open and connected —
+        // push covers the backgrounded/closed case too.
+        sendPushNotifications(shopOrder.owner?.expoPushTokens, {
+          title: "New order!",
+          body: `₹${shopOrder.subtotal} · ${shopOrder.shopOrderItems.length} item${shopOrder.shopOrderItems.length === 1 ? "" : "s"}`,
+          data: { type: "newOrder", orderId: newOrder._id.toString() },
+        });
       });
     }
 
@@ -189,7 +197,7 @@ export const verifyPayment = async (req, res) => {
     await order.populate("shopOrders.shopOrderItems.item", "name image price");
     await order.populate("shopOrders.shop", "name");
 
-    await order.populate("shopOrders.owner", "name socketId");
+    await order.populate("shopOrders.owner", "name socketId expoPushTokens");
     await order.populate("user", "name email mobile");
 
     //! bring the io from the index.js in app
@@ -209,6 +217,11 @@ export const verifyPayment = async (req, res) => {
             payment: order.payment,
           });
         }
+        sendPushNotifications(shopOrder.owner?.expoPushTokens, {
+          title: "New order!",
+          body: `₹${shopOrder.subtotal} · ${shopOrder.shopOrderItems.length} item${shopOrder.shopOrderItems.length === 1 ? "" : "s"}`,
+          data: { type: "newOrder", orderId: order._id.toString() },
+        });
       });
     }
 

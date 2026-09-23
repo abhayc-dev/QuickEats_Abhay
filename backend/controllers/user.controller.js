@@ -36,3 +36,27 @@ export const updateUserLocation = async(req, res) => {
     return res.status(500).json({ message: error.message }); // send readable error
 }
 }
+
+//! store an Expo push token for this account, so it can be alerted (sound +
+//! notification) even when its app is backgrounded or closed
+export const registerPushToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ message: "token is required" });
+    }
+    // addToSet avoids piling up duplicate entries if the same device
+    // re-registers (e.g. on every app launch)
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { $addToSet: { expoPushTokens: token } },
+      { new: true }
+    );
+    if (!user) {
+      return res.status(400).json({ message: "user not found" });
+    }
+    return res.status(200).json({ message: "push token registered" });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
