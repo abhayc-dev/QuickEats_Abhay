@@ -18,8 +18,20 @@ export default function Orders() {
   const ordersQuery = useQuery({
     queryKey: ["myOrders"],
     queryFn: async () => (await api.get<Order[]>("/order/my-orders")).data,
-    enabled: !!user,
+    // Only ever fetch this as a "user" role — the root layout's auto-sign-out
+    // guard clears a wrong-role session, but that runs in an effect *after*
+    // this render, so it can't stop a bad response from being requested (or
+    // an already-cached one from being shown) on this exact render.
+    enabled: !!user && user.role === "user",
   });
+
+  // The backend returns a differently-shaped response for non-"user" roles
+  // (shopOrders is a single object instead of an array — see
+  // backend/controllers/order.controllers.js getMyOrders). Filtering these
+  // out here means a stale cache entry or a render that beats the
+  // auto-sign-out effect can never crash this screen, only show fewer rows
+  // until the sign-out completes.
+  const orders = (ordersQuery.data ?? []).filter((o) => Array.isArray(o.shopOrders));
 
   if (!user) {
     return (
@@ -44,7 +56,7 @@ export default function Orders() {
     );
   }
 
-  if (!ordersQuery.data?.length) {
+  if (!orders.length) {
     return (
       <View style={styles.center}>
         <Text style={styles.emptyText}>You haven't placed any orders yet</Text>
@@ -56,7 +68,7 @@ export default function Orders() {
     <View style={styles.container}>
       <Text style={styles.title}>My Orders</Text>
       <FlatList
-        data={ordersQuery.data}
+        data={orders}
         keyExtractor={(o) => o._id}
         contentContainerStyle={{ padding: 16, gap: 12 }}
         renderItem={({ item }) => {

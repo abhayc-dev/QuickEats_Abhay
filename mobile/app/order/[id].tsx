@@ -34,12 +34,17 @@ export default function OrderDetail() {
   }
 
   const order = orderQuery.data;
+  // See orders.tsx: the backend returns shopOrders as a single object (not
+  // an array) for non-"user" roles. Guard here too so a wrong-role session
+  // never crashes this screen, even for the one render before the root
+  // layout's auto-sign-out effect has a chance to run.
+  const shopOrders = Array.isArray(order.shopOrders) ? order.shopOrders : [];
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <Stack.Screen options={{ title: `Order #${order._id.slice(-6).toUpperCase()}` }} />
 
-      {order.shopOrders.map((shopOrder) => {
+      {shopOrders.map((shopOrder) => {
         const shop = typeof shopOrder.shop === "object" ? (shopOrder.shop as Shop) : null;
         const deliveryBoy =
           typeof shopOrder.assignedDeliveryBoy === "object"
