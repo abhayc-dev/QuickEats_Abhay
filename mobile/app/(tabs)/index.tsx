@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,9 @@ import {
   Switch,
   RefreshControl,
   ScrollView,
+  Animated,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
 } from "react-native";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
@@ -57,6 +60,38 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [vegOnly, setVegOnly] = useState(false);
   const [category, setCategory] = useState("All");
+  const [locationRowHeight, setLocationRowHeight] = useState(0);
+
+  // Zomato-style collapsing header: the greeting/location row slides away
+  // as soon as the list scrolls down, and comes right back on the first
+  // upward scroll — direction-based, not just "past some offset", so it
+  // reacts the moment the user reverses their swipe.
+  const locationAnim = useRef(new Animated.Value(0)).current; // 0 = shown, 1 = hidden
+  const lastScrollY = useRef(0);
+  const hiddenRef = useRef(false);
+
+  const setLocationHidden = (hidden: boolean) => {
+    if (hiddenRef.current === hidden) return;
+    hiddenRef.current = hidden;
+    Animated.timing(locationAnim, {
+      toValue: hidden ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const onListScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = Math.max(0, e.nativeEvent.contentOffset.y);
+    const diff = y - lastScrollY.current;
+    if (y < 20) {
+      setLocationHidden(false);
+    } else if (diff > 6) {
+      setLocationHidden(true);
+    } else if (diff < -6) {
+      setLocationHidden(false);
+    }
+    lastScrollY.current = y;
+  };
 
   const citiesQuery = useQuery({
     queryKey: ["cities"],
@@ -75,10 +110,19 @@ export default function Home() {
     refetchInterval: 20_000,
   });
 
-  const refreshing = shopsQuery.isRefetching || citiesQuery.isRefetching;
-  const onRefresh = () => {
-    shopsQuery.refetch();
-    citiesQuery.refetch();
+  // Bound to isRefetching before, so the pull-to-refresh spinner popped up
+  // on its own every time the 20s background refetchInterval fired below —
+  // it looked like the whole screen was randomly reloading. Tracking this
+  // separately means the spinner only shows for an actual pull-to-refresh;
+  // the interval keeps data fresh silently in the background either way.
+  const [manualRefreshing, setManualRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setManualRefreshing(true);
+    try {
+      await Promise.all([shopsQuery.refetch(), citiesQuery.refetch()]);
+    } finally {
+      setManualRefreshing(false);
+    }
   };
 
   const categories = useMemo(() => {
@@ -87,6 +131,21 @@ export default function Home() {
       for (const item of shop.items) set.add(item.category);
     }
     return ["All", ...Array.from(set).sort()];
+  }, [shopsQuery.data]);
+
+  // One representative photo per category, pulled straight from a real menu
+  // item in that category (first one found) — so "Burgers" shows an actual
+  // burger from the shop that added it, not a stock/fabricated image.
+  const categoryThumbnails = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const shop of shopsQuery.data ?? []) {
+      for (const item of shop.items) {
+        if (item.category && item.image && !map[item.category]) {
+          map[item.category] = item.image;
+        }
+      }
+    }
+    return map;
   }, [shopsQuery.data]);
 
   const q = search.trim().toLowerCase();
@@ -187,8 +246,27 @@ export default function Home() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.headerTop}>
-          <View style={{ flex: 1 }}>
+        <Animated.View
+          style={[
+            styles.headerTop,
+            locationRowHeight
+              ? {
+                  height: locationAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [locationRowHeight, 0],
+                  }),
+                }
+              : null,
+            { opacity: locationAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) },
+            { overflow: "hidden" },
+          ]}
+        >
+          <View
+            style={{ flex: 1 }}
+            onLayout={(e) => {
+              if (!locationRowHeight) setLocationRowHeight(e.nativeEvent.layout.height);
+            }}
+          >
             <Text style={styles.greeting}>
               {greeting()}{user?.fullName ? `, ${user.fullName.split(" ")[0]}` : ""}
             </Text>
@@ -200,7 +278,7 @@ export default function Home() {
               <Text style={styles.chevron}>▾</Text>
             </Pressable>
           </View>
-        </View>
+        </Animated.View>
 
         {!!city && (
           <>
@@ -239,22 +317,32 @@ export default function Home() {
                 showsHorizontalScrollIndicator={false}
                 data={categories}
                 keyExtractor={(c) => c}
-                contentContainerStyle={{ gap: 8 }}
-                renderItem={({ item: c }) => (
-                  <Pressable
-                    style={[styles.categoryChip, category === c && styles.categoryChipActive]}
-                    onPress={() => setCategory(c)}
-                  >
-                    <Text
-                      style={[
-                        styles.categoryChipText,
-                        category === c && styles.categoryChipTextActive,
-                      ]}
-                    >
-                      {c}
-                    </Text>
-                  </Pressable>
-                )}
+                contentContainerStyle={{ gap: 16, paddingRight: 4 }}
+                renderItem={({ item: c }) => {
+                  const active = category === c;
+                  const thumb = categoryThumbnails[c];
+                  return (
+                    <Pressable style={styles.categoryTile} onPress={() => setCategory(c)}>
+                      <View style={[styles.categoryImageWrap, active && styles.categoryImageWrapActive]}>
+                        {thumb ? (
+                          <Image source={{ uri: thumb }} style={styles.categoryImage} contentFit="cover" />
+                        ) : (
+                          <View style={styles.categoryImageFallback}>
+                            <Text style={styles.categoryImageFallbackText}>
+                              {c === "All" ? "🍽️" : "🍴"}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text
+                        style={[styles.categoryTileText, active && styles.categoryTileTextActive]}
+                        numberOfLines={1}
+                      >
+                        {c}
+                      </Text>
+                    </Pressable>
+                  );
+                }}
               />
             )}
           </>
@@ -275,8 +363,10 @@ export default function Home() {
       ) : shopsQuery.isError || !shopsQuery.data?.length ? (
         <ScrollView
           contentContainerStyle={{ flexGrow: 1 }}
+          onScroll={onListScroll}
+          scrollEventThrottle={16}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+            <RefreshControl refreshing={manualRefreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
         >
           <View style={styles.empty}>
@@ -294,9 +384,11 @@ export default function Home() {
         <FlatList
           data={filteredShops}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={{ padding: 16, paddingTop: 4, gap: 14 }}
+          contentContainerStyle={{ padding: 16, paddingTop: 16, gap: 14 }}
+          onScroll={onListScroll}
+          scrollEventThrottle={16}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+            <RefreshControl refreshing={manualRefreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
           ListHeaderComponent={
             !!filteredShops.length ? (
@@ -502,24 +594,45 @@ const styles = StyleSheet.create({
   },
   vegDotInner: { width: 8, height: 8, borderRadius: 4 },
   vegLabel: { fontSize: 14, fontWeight: "700", color: colors.text },
-  categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+  categoryTile: { alignItems: "center", width: 68 },
+  categoryImageWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    padding: 2,
+    borderWidth: 2,
+    borderColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryImageWrapActive: { borderColor: colors.primary },
+  categoryImage: { width: "100%", height: "100%", borderRadius: 28, backgroundColor: colors.border },
+  categoryImageFallback: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 28,
     backgroundColor: colors.bg,
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: colors.border,
   },
-  categoryChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  categoryChipText: { fontSize: 13, fontWeight: "600", color: colors.text },
-  categoryChipTextActive: { color: "#fff", fontWeight: "700" },
+  categoryImageFallbackText: { fontSize: 26 },
+  categoryTileText: {
+    fontSize: 11.5,
+    fontWeight: "600",
+    color: colors.muted,
+    marginTop: 6,
+    textAlign: "center",
+  },
+  categoryTileTextActive: { color: colors.primary, fontWeight: "800" },
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700",
     color: colors.muted,
     textTransform: "uppercase",
     letterSpacing: 0.4,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 10 },
   emptyEmoji: { fontSize: 40, marginBottom: 4 },
