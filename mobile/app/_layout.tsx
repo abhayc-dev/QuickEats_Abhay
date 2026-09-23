@@ -155,6 +155,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="shop/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="checkout" options={{ headerShown: true, title: "Checkout" }} />
+            <Stack.Screen name="order-placed" options={{ headerShown: false, gestureEnabled: false }} />
             <Stack.Screen name="order/[id]" options={{ headerShown: true, title: "Order" }} />
           </Stack>
         </QueryClientProvider>
