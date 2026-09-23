@@ -103,7 +103,7 @@ export default function Checkout() {
         totalAmount: total,
       });
       cart.clear();
-      router.replace(`/order/${data._id}`);
+      router.replace({ pathname: "/order-placed", params: { orderId: data._id } });
     } catch (error) {
       Alert.alert("Order failed", apiErrorMessage(error));
     } finally {
