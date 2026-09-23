@@ -623,7 +623,7 @@ const styles = StyleSheet.create({
     color: colors.muted,
     textTransform: "uppercase",
     letterSpacing: 0.4,
-    marginBottom: 10,
+    marginBottom: 16,
   },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 10 },
   emptyEmoji: { fontSize: 40, marginBottom: 4 },
