@@ -1,4 +1,5 @@
-import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator, Alert } from "react-native";
+import { useMemo, useState } from "react";
+import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator, Alert, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, apiErrorMessage } from "../../lib/api";
@@ -24,9 +25,19 @@ const NEXT_ACTION: Partial<Record<ShopOrderStatus, { next: ShopOrderStatus; labe
   preparing: { next: "out of delivery", label: "Mark Out for Delivery" },
 };
 
+const STATUS_FILTERS: { key: "all" | ShopOrderStatus; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "preparing", label: "Preparing" },
+  { key: "out of delivery", label: "Out for delivery" },
+  { key: "delivered", label: "Delivered" },
+];
+
 export default function OrdersTab() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<"all" | ShopOrderStatus>("all");
+  const [search, setSearch] = useState("");
 
   const ordersQuery = useQuery({
     queryKey: ["ownerOrders"],
@@ -41,6 +52,20 @@ export default function OrdersTab() {
     onError: (error) => Alert.alert("Couldn't update order", apiErrorMessage(error)),
   });
 
+  const orders = ordersQuery.data ?? [];
+  const q = search.trim().toLowerCase();
+  // useMemo must run on every render regardless of the loading early-return
+  // below — hoisting it above that return, like every other hook here, so
+  // the hook count stays consistent between renders (otherwise React throws
+  // "Rendered more hooks than during the previous render").
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      const statusOk = statusFilter === "all" || o.shopOrders.status === statusFilter;
+      const nameOk = !q || (o.user?.fullName ?? "").toLowerCase().includes(q);
+      return statusOk && nameOk;
+    });
+  }, [orders, statusFilter, q]);
+
   if (ordersQuery.isLoading) {
     return (
       <View style={styles.center}>
@@ -49,12 +74,53 @@ export default function OrdersTab() {
     );
   }
 
-  const orders = ordersQuery.data ?? [];
+  // update-status has a real network round trip before the order flips to
+  // its new status, so without this the button just sits there looking
+  // unresponsive for that stretch. Track which order is in flight (not just
+  // a boolean) so only that row shows the spinner — the others stay legible.
+  const pendingOrderId = statusMutation.isPending ? statusMutation.variables?.orderId : undefined;
+  const hasActiveFilters = statusFilter !== "all" || !!q;
 
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>Orders</Text>
+
+        {!!orders.length && (
+          <>
+            <View style={styles.searchBar}>
+              <Text style={styles.searchIcon}>🔍</Text>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by customer name"
+                placeholderTextColor={colors.muted}
+                value={search}
+                onChangeText={setSearch}
+              />
+            </View>
+
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={STATUS_FILTERS}
+              keyExtractor={(f) => f.key}
+              contentContainerStyle={{ gap: 8 }}
+              style={{ marginTop: 12 }}
+              renderItem={({ item: f }) => (
+                <Pressable
+                  style={[styles.filterChip, statusFilter === f.key && styles.filterChipActive]}
+                  onPress={() => setStatusFilter(f.key)}
+                >
+                  <Text
+                    style={[styles.filterChipText, statusFilter === f.key && styles.filterChipTextActive]}
+                  >
+                    {f.label}
+                  </Text>
+                </Pressable>
+              )}
+            />
+          </>
+        )}
       </View>
 
       {!orders.length ? (
@@ -62,11 +128,23 @@ export default function OrdersTab() {
           <Text style={styles.emptyEmoji}>🧾</Text>
           <Text style={styles.emptyText}>No orders yet</Text>
         </View>
+      ) : !filteredOrders.length ? (
+        <View style={styles.center}>
+          <Text style={styles.emptyEmoji}>🔍</Text>
+          <Text style={styles.emptyText}>No orders match your filters.</Text>
+        </View>
       ) : (
         <FlatList
-          data={orders}
+          data={filteredOrders}
           keyExtractor={(o) => o._id}
           contentContainerStyle={{ padding: 16, gap: 12 }}
+          ListHeaderComponent={
+            hasActiveFilters ? (
+              <Text style={styles.resultsCount}>
+                {filteredOrders.length} order{filteredOrders.length === 1 ? "" : "s"} matching
+              </Text>
+            ) : null
+          }
           renderItem={({ item: order }) => {
             const so = order.shopOrders;
             const action = NEXT_ACTION[so.status];
@@ -102,13 +180,20 @@ export default function OrdersTab() {
 
                 {action && (
                   <Pressable
-                    style={styles.actionButton}
+                    style={[
+                      styles.actionButton,
+                      statusMutation.isPending && styles.actionButtonDisabled,
+                    ]}
                     disabled={statusMutation.isPending}
                     onPress={() =>
                       statusMutation.mutate({ orderId: order._id, shopId: thisShopId, status: action.next })
                     }
                   >
-                    <Text style={styles.actionButtonText}>{action.label}</Text>
+                    {order._id === pendingOrderId ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={styles.actionButtonText}>{action.label}</Text>
+                    )}
                   </Pressable>
                 )}
               </View>
@@ -131,6 +216,37 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   headerTitle: { fontSize: 24, fontWeight: "800", color: colors.text },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.bg,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44,
+    gap: 8,
+    marginTop: 14,
+  },
+  searchIcon: { fontSize: 15 },
+  searchInput: { flex: 1, fontSize: 15, color: colors.text, padding: 0 },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterChipText: { fontSize: 13, fontWeight: "600", color: colors.text },
+  filterChipTextActive: { color: "#fff", fontWeight: "700" },
+  resultsCount: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: colors.muted,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginBottom: 2,
+  },
   emptyEmoji: { fontSize: 40 },
   emptyText: { fontSize: 15, color: colors.muted },
   card: {
@@ -159,4 +275,5 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   actionButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  actionButtonDisabled: { opacity: 0.6 },
 });
