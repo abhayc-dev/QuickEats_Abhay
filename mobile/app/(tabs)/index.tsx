@@ -375,7 +375,7 @@ export default function Home() {
         <FlatList
           data={filteredShops}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={{ padding: 16, paddingTop: 3, gap: 14 }}
+          contentContainerStyle={{ padding: 16, paddingTop: 16, gap: 14 }}
           onScroll={onListScroll}
           scrollEventThrottle={16}
           refreshControl={
