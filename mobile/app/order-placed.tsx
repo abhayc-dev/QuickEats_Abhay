@@ -5,10 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { createAudioPlayer } from "expo-audio";
 import { colors } from "../lib/theme";
 
-// Same checkmark.json used on the QuickEats website (frontend/src/pages/
-// OrderPlaced.jsx) — a cart icon inside a ring that fills like a clock,
-// then crossfades into a green circle with a checkmark. Reusing the file
-// as-is keeps the two apps' order-confirmation moments identical.
+// checkmark.json — plays on a loop rather than stopping after one pass.
 export default function OrderPlaced() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
 
@@ -26,7 +23,7 @@ export default function OrderPlaced() {
       <LottieView
         source={require("../assets/checkmark.json")}
         autoPlay
-        loop={false}
+        loop
         style={styles.lottie}
       />
 
